@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Control de Milanesas</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap">
+
+<!-- 1) Tus claves de Supabase  2) La librería de Supabase -->
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root{
+    --paper:#F6EFE1; --card:#FFFFFF; --card-2:#FBF6EC; --sunk:#F1E7D5;
+    --ink:#2B2019; --ink-2:#6A5A48; --ink-3:#9A8977;
+    --line:#E7D9C2; --line-strong:#D8C4A5;
+    --accent:#C9781F; --accent-ink:#8A4F12; --accent-soft:#F3E2C7;
+    --good:#3E8E56; --good-bg:#E4F0E3; --warn:#C98A12; --warn-bg:#F7EBCB;
+    --crit:#C24A2E; --crit-bg:#F6DED4;
+    --backdrop:#2B2019;
+    --shadow:0 1px 2px rgba(43,32,25,.05),0 8px 22px -12px rgba(43,32,25,.18);
+    --radius:14px;
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme: dark){
+      --paper:#191410; --card:#241C15; --card-2:#1F1811; --sunk:#15100B;
+      --ink:#F1E7D6; --ink-2:#B7A488; --ink-3:#8B7A64;
+      --line:#3A2E22; --line-strong:#4A3B2B;
+      --accent:#E7A24A; --accent-ink:#F0BE7C; --accent-soft:#3A2A16;
+      --good:#66B77C; --good-bg:#20301F; --warn:#E0B347; --warn-bg:#332815;
+      --crit:#E1735A; --crit-bg:#37201A;
+      --backdrop:#0E0B08;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#191410; --card:#241C15; --card-2:#1F1811; --sunk:#15100B;
+    --ink:#F1E7D6; --ink-2:#B7A488; --ink-3:#8B7A64;
+    --line:#3A2E22; --line-strong:#4A3B2B;
+    --accent:#E7A24A; --accent-ink:#F0BE7C; --accent-soft:#3A2A16;
+    --good:#66B77C; --good-bg:#20301F; --warn:#E0B347; --warn-bg:#332815;
+    --crit:#E1735A; --crit-bg:#37201A;
+    --backdrop:#0E0B08;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:
+      radial-gradient(1100px 700px at 50% -10%, rgba(201,120,31,.16), transparent 60%),
+      var(--backdrop);
+    color:var(--ink);
+    font-family:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px 14px;
+  }
+  h1,h2,h3{font-family:"Bricolage Grotesque",sans-serif;letter-spacing:-.01em;margin:0;}
+
+  .phone{
+    width:100%;max-width:412px;height:86vh;max-height:880px;min-height:560px;
+    background:var(--paper);border-radius:40px;position:relative;overflow:hidden;
+    box-shadow:0 0 0 11px #0b0805, 0 0 0 12px rgba(255,255,255,.06), 0 40px 90px -30px rgba(0,0,0,.7);
+    display:flex;flex-direction:column;
+  }
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:26px;
+    background:#0b0805;border-radius:0 0 16px 16px;z-index:6;}
+
+  /* ---- app bar ---- */
+  .appbar{padding:26px 20px 14px;background:var(--ink);color:var(--paper);flex:0 0 auto;position:relative;}
+  .appbar .brand{display:flex;align-items:center;gap:11px;}
+  .mk{width:34px;height:34px;border-radius:10px;flex:0 0 auto;
+    background:radial-gradient(circle at 32% 30%, #F2C879 0 18%, #E39A3E 30%, #B96B1E 70%);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.18);position:relative;}
+  .mk::after{content:"";position:absolute;inset:6px;border-radius:6px;
+    background-image:radial-gradient(rgba(90,50,15,.55) 1px,transparent 1.3px);background-size:6px 6px;opacity:.7;}
+  .appbar h1{font-size:18px;font-weight:800;line-height:1;}
+  .appbar .sub{font-size:11px;color:#C9B79F;margin-top:3px;}
+  .stockchip{margin-left:auto;text-align:right;background:#FBF3E4;border:1px solid rgba(43,32,25,.12);
+    border-radius:12px;padding:7px 13px 6px;box-shadow:0 3px 10px -4px rgba(0,0,0,.35);}
+  .stockchip .n{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:21px;line-height:1;font-variant-numeric:tabular-nums;color:#241811;}
+  .stockchip .l{font-size:9.5px;font-weight:700;color:#5A4A38;letter-spacing:.06em;text-transform:uppercase;margin-top:3px;}
+
+  /* ---- demo ribbon ---- */
+  .demo-rib{flex:0 0 auto;background:var(--warn-bg);color:var(--accent-ink);font-size:11px;font-weight:700;
+    text-align:center;padding:6px 10px;border-bottom:1px solid var(--line);letter-spacing:.01em;}
+  .demo-rib[hidden]{display:none;}
+
+  /* ---- screen area ---- */
+  .screen{flex:1 1 auto;overflow-y:auto;padding:16px 16px 22px;-webkit-overflow-scrolling:touch;}
+  .screen::-webkit-scrollbar{width:0;}
+  .screen[hidden]{display:none;}
+  .stitle{font-size:20px;font-weight:800;margin-bottom:2px;}
+  .ssub{font-size:12.5px;color:var(--ink-3);margin-bottom:14px;}
+
+  /* ---- segmented ---- */
+  .seg{display:flex;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px;margin-bottom:16px;}
+  .seg button{flex:1;font:inherit;font-weight:700;font-size:14px;font-family:"Bricolage Grotesque",sans-serif;
+    color:var(--ink-2);background:none;border:none;padding:9px;border-radius:9px;cursor:pointer;transition:.15s;}
+  .seg button.on{background:var(--accent);color:#FFF7EA;box-shadow:0 2px 8px -2px rgba(201,120,31,.5);}
+  .seg.salida button.on{background:var(--crit);box-shadow:0 2px 8px -2px rgba(194,74,46,.5);}
+
+  /* ---- card & fields ---- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px;margin-bottom:14px;}
+  .field{margin-bottom:13px;}
+  .field:last-child{margin-bottom:0;}
+  .field.row{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;}
+  label .u{color:var(--ink-3);font-weight:500;}
+  input,select{width:100%;font:inherit;font-size:15px;color:var(--ink);background:var(--card-2);
+    border:1px solid var(--line-strong);border-radius:10px;padding:10px 11px;outline:none;appearance:none;}
+  select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
+    background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:32px;}
+  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  input[type=date]{color-scheme:light dark;}
+  .big input{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px;text-align:center;}
+
+  .section-lbl{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:2px 0 10px;display:flex;justify-content:space-between;align-items:center;}
+
+  /* ---- product stepper rows ---- */
+  .prod-list{display:flex;flex-direction:column;gap:9px;}
+  .prow{display:flex;align-items:center;gap:10px;background:var(--card-2);border:1px solid var(--line);border-radius:11px;padding:8px 8px 8px 13px;}
+  .prow .pn{flex:1;min-width:0;}
+  .prow .pn b{font-size:13.5px;font-weight:600;display:block;line-height:1.2;}
+  .prow .pn small{font-size:11px;color:var(--ink-3);}
+  .stepper{display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--line-strong);border-radius:9px;padding:2px;}
+  .stepper button{width:28px;height:28px;border:none;background:var(--sunk);color:var(--accent-ink);font-size:17px;font-weight:700;
+    border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+  .stepper button:active{background:var(--accent-soft);}
+  .stepper input.qv{width:54px;min-width:0;text-align:center;font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;
+    font-family:"Bricolage Grotesque",sans-serif;border:none;background:transparent;padding:5px 2px;outline:none;color:var(--ink);appearance:none;border-radius:6px;}
+  .stepper input.qv:focus{background:var(--accent-soft);color:var(--accent-ink);}
+  .stepper input.qv::-webkit-outer-spin-button,.stepper input.qv::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .prow .rm{width:26px;height:26px;flex:0 0 auto;border:none;background:none;color:var(--ink-3);font-size:16px;cursor:pointer;border-radius:50%;}
+  .prow .rm:hover{color:var(--crit);background:var(--crit-bg);}
+
+  .addprod{margin-top:11px;}
+  .addbtn{width:100%;font:inherit;font-weight:600;font-size:13.5px;color:var(--accent-ink);background:var(--accent-soft);
+    border:1px dashed var(--accent);border-radius:11px;padding:10px;cursor:pointer;}
+  .catalog{display:none;flex-wrap:wrap;gap:7px;margin-top:10px;padding:11px;background:var(--sunk);border:1px solid var(--line);border-radius:11px;}
+  .catalog.open{display:flex;}
+  .catalog .ct{font:inherit;font-size:13px;font-weight:600;color:var(--ink);background:var(--card);border:1px solid var(--line-strong);
+    border-radius:999px;padding:6px 12px;cursor:pointer;}
+  .catalog .ct:hover{border-color:var(--accent);color:var(--accent-ink);}
+  .catalog .none{font-size:12px;color:var(--ink-3);font-style:italic;}
+
+  .btn{width:100%;font:inherit;font-weight:800;font-size:15px;font-family:"Bricolage Grotesque",sans-serif;
+    color:#FFF7EA;background:var(--accent);border:none;border-radius:12px;padding:13px;cursor:pointer;transition:filter .15s;margin-top:4px;}
+  .btn:hover{filter:brightness(1.06);} .btn:active{filter:brightness(.95);}
+  .btn:disabled{opacity:.6;cursor:default;}
+  .btn.crit{background:var(--crit);}
+  .btn.ghost{color:var(--accent-ink);background:var(--accent-soft);font-size:14px;padding:11px;}
+
+  /* ---- history ---- */
+  .filters{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+  .chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;}
+  .chips::-webkit-scrollbar{height:0;}
+  .fchip{flex:0 0 auto;font:inherit;font-size:13px;font-weight:600;color:var(--ink-2);background:var(--card);
+    border:1px solid var(--line-strong);border-radius:999px;padding:7px 13px;cursor:pointer;white-space:nowrap;}
+  .fchip.on{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .drow{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .drow label{font-size:11px;margin-bottom:5px;}
+  .clearf{align-self:flex-start;background:none;border:none;color:var(--accent-ink);font:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;margin-top:-2px;}
+  .hitem{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:13px 14px;margin-bottom:10px;}
+  .hitem .hh{display:flex;align-items:center;gap:9px;}
+  .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;}
+  .badge.prod{background:var(--good-bg);color:var(--good);}
+  .badge.sal{background:var(--crit-bg);color:var(--crit);}
+  .hitem .hcar{font-weight:700;font-size:14.5px;}
+  .hitem .szt{font-size:11px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);padding:2px 8px;border-radius:999px;flex:0 0 auto;}
+  .hitem .hm{margin-left:auto;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:17px;font-variant-numeric:tabular-nums;}
+  .hitem .hdel{margin-left:6px;border:1px solid var(--line-strong);background:none;color:var(--ink-3);border-radius:8px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600;flex:0 0 auto;}
+  .hitem .hdel.confirm{border-color:var(--crit);color:var(--crit);background:var(--crit-bg);}
+  .hitem .hmeta{font-size:12px;color:var(--ink-3);margin-top:6px;display:flex;justify-content:space-between;gap:10px;}
+  .hitem .hby{font-size:11.5px;color:var(--ink-3);margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);display:flex;align-items:center;gap:6px;}
+  .hitem .hby .who{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:var(--ink-2);}
+  .hitem .hby .who .dot{width:16px;height:16px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);
+    font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;font-family:"Bricolage Grotesque",sans-serif;}
+  .hitem .items{margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);font-size:12px;color:var(--ink-2);}
+  .hitem .items b{color:var(--ink);}
+  .hempty{text-align:center;color:var(--ink-3);font-size:14px;padding:40px 16px;}
+  .hempty .ic{font-size:30px;display:block;margin-bottom:10px;}
+
+  /* ---- config ---- */
+  .cfg-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px;margin-bottom:14px;}
+  .cfg-card h3{font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:3px;}
+  .cfg-card .desc{font-size:12px;color:var(--ink-3);margin-bottom:12px;word-break:break-word;}
+  .rowlist{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+  .rowlist:last-child{margin-bottom:0;}
+  .litem{display:flex;align-items:center;gap:10px;background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:9px 10px 9px 13px;}
+  .litem .col{flex:1;min-width:0;}
+  .litem .ln{display:block;font-weight:600;font-size:14px;line-height:1.2;}
+  .litem .lmeta{display:block;font-size:10.5px;color:var(--ink-3);margin-top:2px;font-weight:500;}
+  .litem .lu{font-size:11px;color:var(--ink-3);background:var(--sunk);padding:2px 8px;border-radius:999px;flex:0 0 auto;}
+  .litem .lx{width:26px;height:26px;flex:0 0 auto;border:none;background:none;color:var(--ink-3);font-size:16px;cursor:pointer;border-radius:50%;}
+  .litem .lx:hover{color:var(--crit);background:var(--crit-bg);}
+  .litem .lx.confirm{color:var(--crit);background:var(--crit-bg);}
+  .litem.persona .dot{width:30px;height:30px;flex:0 0 auto;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);
+    font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:"Bricolage Grotesque",sans-serif;}
+  .litem.persona .me{font-size:10px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:middle;}
+  .addrow{display:flex;gap:8px;}
+  .addrow input{flex:1;}
+  .addrow select{width:auto;flex:0 0 84px;}
+  .addrow button{flex:0 0 auto;width:44px;padding:0;font-size:22px;font-weight:700;line-height:1;background:var(--accent);color:#FFF7EA;border:none;border-radius:10px;cursor:pointer;}
+  .soon{opacity:.6;} .soon .desc{font-style:italic;}
+  .soon-tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);background:var(--sunk);border:1px solid var(--line);padding:3px 8px;border-radius:999px;margin-left:auto;}
+
+  /* ---- bottom nav ---- */
+  .nav{flex:0 0 auto;display:flex;background:var(--card);border-top:1px solid var(--line);padding:8px 6px calc(8px + env(safe-area-inset-bottom));}
+  .nav button{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;
+    padding:6px 0;color:var(--ink-3);font:inherit;font-size:11px;font-weight:600;border-radius:10px;transition:.15s;}
+  .nav button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+  .nav button.on{color:var(--accent);}
+  .nav button.on span{color:var(--accent-ink);}
+
+  /* toast */
+  .toast{position:absolute;left:50%;bottom:84px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:var(--paper);font-size:13.5px;font-weight:600;padding:11px 18px;border-radius:12px;
+    box-shadow:0 10px 24px -8px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.28s;z-index:8;white-space:nowrap;display:flex;gap:8px;align-items:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast .k{color:var(--accent-ink);}
+
+  /* ---- auth overlay ---- */
+  .auth{position:absolute;inset:0;z-index:20;background:var(--paper);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:30px 26px;overflow-y:auto;}
+  .auth[hidden]{display:none;}
+  .auth .mk{width:56px;height:56px;border-radius:16px;margin-bottom:16px;}
+  .auth h2{font-size:23px;font-weight:800;text-align:center;}
+  .auth .amsg{font-size:13px;color:var(--ink-3);text-align:center;margin:6px 0 20px;max-width:280px;}
+  .auth .abox{width:100%;max-width:320px;}
+  .auth .field{margin-bottom:12px;}
+  .auth .field[hidden]{display:none;}
+  .auth-err{font-size:12.5px;color:var(--crit);background:var(--crit-bg);border:1px solid var(--crit);
+    border-radius:10px;padding:9px 12px;margin-bottom:12px;}
+  .auth-err[hidden]{display:none;}
+  .linkbtn{display:block;width:100%;margin-top:12px;background:none;border:none;color:var(--accent-ink);
+    font:inherit;font-size:13px;font-weight:600;cursor:pointer;text-align:center;}
+  .loader{position:absolute;inset:0;z-index:30;background:var(--paper);display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:14px;}
+  .loader[hidden]{display:none;}
+  .spin{width:26px;height:26px;border:3px solid var(--line-strong);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;margin-right:12px;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;} .spin{animation-duration:1.6s;}}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+
+  <div class="appbar">
+    <div class="brand">
+      <div class="mk" aria-hidden="true"></div>
+      <div>
+        <h1>Control de Milanesas</h1>
+        <div class="sub"><span id="screenName">Principal</span><span id="saveState"></span></div>
+      </div>
+      <div class="stockchip">
+        <div class="n" id="stockN">0</div>
+        <div class="l">en stock</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-rib" id="demoRib" hidden>🧪 Modo demo · datos de ejemplo (no se guardan)</div>
+
+  <!-- ============ PRINCIPAL ============ -->
+  <div class="screen" id="scr-principal">
+    <div class="seg" id="modeSeg">
+      <button data-mode="prod" class="on" type="button">▲ Producir</button>
+      <button data-mode="sal" type="button">▼ Salida</button>
+    </div>
+
+    <!-- PRODUCIR -->
+    <div id="paneProd">
+      <div class="card">
+        <div class="field row">
+          <div>
+            <label for="pFecha">Fecha</label>
+            <input type="date" id="pFecha">
+          </div>
+          <div>
+            <label for="pKg">Carne <span class="u">(kg)</span></label>
+            <input type="number" id="pKg" min="0" step="0.1" inputmode="decimal" placeholder="0">
+          </div>
+        </div>
+        <div class="field">
+          <label for="pCarne">Tipo de carne</label>
+          <select id="pCarne"></select>
+        </div>
+        <div class="field row">
+          <div>
+            <label for="pTam">Tamaño</label>
+            <select id="pTam"></select>
+          </div>
+          <div class="big">
+            <label for="pMila">Milanesas <span class="u">(u.)</span></label>
+            <input type="number" id="pMila" min="0" step="1" inputmode="numeric" placeholder="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-lbl"><span>Productos utilizados</span><span id="prodCount"></span></div>
+        <div class="prod-list" id="prodItems"></div>
+        <div class="addprod">
+          <button class="addbtn" type="button" id="addProdBtn">+ Agregar producto</button>
+          <div class="catalog" id="catalog"></div>
+        </div>
+      </div>
+
+      <button class="btn" type="button" id="doProd">Registrar producción</button>
+    </div>
+
+    <!-- SALIDA -->
+    <div id="paneSal" hidden>
+      <div class="card">
+        <div class="field row">
+          <div>
+            <label for="sFecha">Fecha</label>
+            <input type="date" id="sFecha">
+          </div>
+          <div class="big">
+            <label for="sMila">Milanesas <span class="u">(u.)</span></label>
+            <input type="number" id="sMila" min="0" step="1" inputmode="numeric" placeholder="0">
+          </div>
+        </div>
+        <div class="field">
+          <label for="sLocal">Local de destino</label>
+          <select id="sLocal"></select>
+        </div>
+        <div class="field">
+          <label for="sCarne">Tipo de milanesa <span class="u">(opcional)</span></label>
+          <select id="sCarne"></select>
+        </div>
+        <div class="field">
+          <label for="sNota">Nota <span class="u">(opcional)</span></label>
+          <input type="text" id="sNota" placeholder="ej: retiró Juan">
+        </div>
+      </div>
+      <button class="btn crit" type="button" id="doSal">Registrar salida</button>
+    </div>
+  </div>
+
+  <!-- ============ HISTORIAL ============ -->
+  <div class="screen" id="scr-historial" hidden>
+    <div class="stitle">Historial</div>
+    <div class="ssub">Todo lo que carga el equipo, con quién lo cargó y cuándo.</div>
+
+    <div class="filters">
+      <div class="chips" id="tipoChips">
+        <button class="fchip on" data-t="todo" type="button">Todo</button>
+        <button class="fchip" data-t="prod" type="button">Producción</button>
+        <button class="fchip" data-t="sal" type="button">Salidas</button>
+      </div>
+      <div class="drow">
+        <div><label for="fDesde">Desde</label><input type="date" id="fDesde"></div>
+        <div><label for="fHasta">Hasta</label><input type="date" id="fHasta"></div>
+      </div>
+      <button class="clearf" id="clearFechas" type="button">Ver todo el período</button>
+      <select id="fCarne"></select>
+      <select id="fLocal"></select>
+      <select id="fPersona"></select>
+    </div>
+
+    <div id="histList"></div>
+  </div>
+
+  <!-- ============ CONFIGURACIÓN ============ -->
+  <div class="screen" id="scr-config" hidden>
+    <div class="stitle">Configuración</div>
+    <div class="ssub">Definí tus carnes, locales y productos. Todo se comparte con el equipo.</div>
+
+    <div class="cfg-card">
+      <h3>👥 Personas</h3>
+      <div class="desc">Quiénes usan la app. Todos ven y cargan sobre los mismos datos.</div>
+      <div class="rowlist" id="cfgPersonas"></div>
+    </div>
+
+    <div class="cfg-card">
+      <h3>🥩 Carnes / tipos de milanesa</h3>
+      <div class="desc">Los tipos que aparecen al producir y en los filtros.</div>
+      <div class="rowlist" id="cfgCarnes"></div>
+      <div class="addrow">
+        <input type="text" id="newCarne" placeholder="ej: Nalga, Pollo, Cerdo…" maxlength="40">
+        <button type="button" data-add="carne">+</button>
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <h3>📏 Tamaños</h3>
+      <div class="desc">Los tamaños que hacés (aparecen al producir): Milanesa, Pizzanesa, Almuerzo…</div>
+      <div class="rowlist" id="cfgTam"></div>
+      <div class="addrow">
+        <input type="text" id="newTam" placeholder="ej: Pizzanesa, Almuerzo…" maxlength="40">
+        <button type="button" data-add="tam">+</button>
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <h3>🏬 Locales</h3>
+      <div class="desc">Adónde salen las milanesas.</div>
+      <div class="rowlist" id="cfgLocales"></div>
+      <div class="addrow">
+        <input type="text" id="newLocal" placeholder="ej: Local Centro" maxlength="40">
+        <button type="button" data-add="local">+</button>
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <h3>🧂 Productos e insumos</h3>
+      <div class="desc">Lo que se usa al producir (pan rallado, huevo, condimentos…).</div>
+      <div class="rowlist" id="cfgProds"></div>
+      <div class="addrow">
+        <input type="text" id="newProd" placeholder="Nombre del producto" maxlength="40">
+        <select id="newProdU"><option value="g">g</option><option value="u">u.</option><option value="ml">ml</option><option value="kg">kg</option></select>
+        <button type="button" data-add="prod">+</button>
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <h3>👤 Cuenta</h3>
+      <div class="desc" id="acctEmail">—</div>
+      <button class="btn ghost" id="logoutBtn" type="button">Cerrar sesión</button>
+    </div>
+
+    <div class="cfg-card soon">
+      <h3>➕ Más opciones <span class="soon-tag">Próximamente</span></h3>
+      <div class="desc">Acá dejamos lugar para lo que necesites sumar después: precios y costos, recetas fijas por tipo, alertas de stock bajo, roles de usuario, etc.</div>
+    </div>
+  </div>
+
+  <!-- ============ NAV ============ -->
+  <nav class="nav" id="nav">
+    <button data-s="principal" class="on" type="button">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+      <span>Principal</span>
+    </button>
+    <button data-s="historial" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>
+      <span>Historial</span>
+    </button>
+    <button data-s="config" type="button">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2.1"/><circle cx="15" cy="12" r="2.1"/><circle cx="8" cy="17" r="2.1"/></svg>
+      <span>Config</span>
+    </button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- ============ LOGIN ============ -->
+  <div class="auth" id="auth" hidden>
+    <div class="mk" aria-hidden="true"></div>
+    <h2>Control de Milanesas</h2>
+    <div class="amsg" id="authMsg">Ingresá para administrar tu producción.</div>
+    <div class="abox">
+      <div class="auth-err" id="authErr" hidden></div>
+      <div class="field" id="nameField" hidden><label for="authName">Tu nombre</label><input type="text" id="authName" autocomplete="name" placeholder="ej: Osva"></div>
+      <div class="field"><label for="authEmail">Email</label><input type="email" id="authEmail" autocomplete="username" placeholder="tu@email.com"></div>
+      <div class="field"><label for="authPass">Contraseña</label><input type="password" id="authPass" autocomplete="current-password" placeholder="••••••••"></div>
+      <button class="btn" id="authBtn" type="button">Ingresar</button>
+      <button class="linkbtn" id="authToggle" type="button">¿No tenés cuenta? Crear una</button>
+    </div>
+  </div>
+
+  <!-- ============ LOADER ============ -->
+  <div class="loader" id="loader"><span class="spin"></span>Cargando…</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function $(id){return document.getElementById(id);}
+  function el(t,c){var e=document.createElement(t);if(c)e.className=c;return e;}
+  function nf(n){return (Number(n)||0).toLocaleString("es-AR");}
+  function num(v){var n=parseFloat(v);return isNaN(n)?0:n;}
+  function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+  function todayISO(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+  function fmtDate(iso){var p=String(iso).split("-");return p.length===3?p[2]+"/"+p[1]+"/"+p[0].slice(2):iso;}
+  function fmtWhen(ts){if(!ts)return"";var d=new Date(ts);if(isNaN(d.getTime()))return"";
+    return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
+  function r2(n){return Math.round((Number(n)||0)*100)/100;}
+  function parseNum(v){var n=parseFloat(String(v).replace(",","."));return (isNaN(n)||n<0)?0:n;}
+  function fmtQty(n){return String(r2(n)).replace(".",",");}
+  function initials(name){var s=String(name||"").trim();if(!s)return"?";var p=s.split(/\s+/);return (p[0][0]+(p[1]?p[1][0]:"")).toUpperCase();}
+
+  // ---------- data (loaded from Supabase, or demo) ----------
+  var CARNES=[], TAMANOS=[], LOCALES=[], PRODUCTOS=[], RECETAS={}, producciones=[], salidas=[];
+  var PROFILES=[], USERS={}, currentUserId=null;
+  var STEP={g:50,ml:50,kg:0.5,u:1}, DEF={g:100,ml:100,kg:1,u:1};
+  var draftItems=[], mode="prod", fTipo="todo", fDesde="", fHasta="", fLocal="";
+  var DEMO=false, demoSeq=0, pendingName="";
+
+  function carneName(id){var c=CARNES.filter(function(x){return x.id===id;})[0];return c?c.name:"—";}
+  function localName(id){var l=LOCALES.filter(function(x){return x.id===id;})[0];return l?l.name:"—";}
+  function tamName(id){var t=TAMANOS.filter(function(x){return x.id===id;})[0];return t?t.name:"";}
+  function prod(id){return PRODUCTOS.filter(function(x){return x.id===id;})[0];}
+  function userName(id){if(!id)return"—";return USERS[id]||"alguien";}
+
+  // ---------- Supabase ----------
+  var SB=null;
+  function sbReady(){
+    if(SB) return SB;
+    if(!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) return null;
+    if(String(window.SUPABASE_URL).indexOf("TU-")>=0 || String(window.SUPABASE_ANON_KEY).indexOf("TU-")>=0) return null;
+    try{ SB=window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY); }catch(e){ SB=null; }
+    return SB;
+  }
+  async function dbInsert(table,row){
+    if(DEMO){ return Object.assign({},row,{id:"demo-"+(++demoSeq),created_at:new Date().toISOString(),creado_por:currentUserId}); }
+    var r=await sbReady().from(table).insert(row).select().single();if(r.error)throw r.error;return r.data;
+  }
+  async function dbDelete(table,id){
+    if(DEMO) return;
+    var r=await sbReady().from(table).delete().eq("id",id);if(r.error)throw r.error;
+  }
+
+  async function loadAll(){
+    var sb=sbReady();
+    var res=await Promise.all([
+      sb.from("carnes").select("*").order("created_at",{ascending:true}),
+      sb.from("tamanos").select("*").order("created_at",{ascending:true}),
+      sb.from("locales").select("*").order("created_at",{ascending:true}),
+      sb.from("productos").select("*").order("created_at",{ascending:true}),
+      sb.from("producciones").select("*").order("fecha",{ascending:false}).order("created_at",{ascending:false}),
+      sb.from("salidas").select("*").order("fecha",{ascending:false}).order("created_at",{ascending:false}),
+      sb.from("profiles").select("*")
+    ]);
+    for(var i=0;i<res.length;i++){ if(res[i].error) throw res[i].error; }
+    CARNES=(res[0].data||[]).map(function(x){return {id:x.id,name:x.name,by:x.creado_por,at:x.created_at};});
+    RECETAS={}; (res[0].data||[]).forEach(function(x){RECETAS[x.id]=Array.isArray(x.receta)?x.receta:[];});
+    TAMANOS=(res[1].data||[]).map(function(x){return {id:x.id,name:x.name,by:x.creado_por,at:x.created_at};});
+    LOCALES=(res[2].data||[]).map(function(x){return {id:x.id,name:x.name,by:x.creado_por,at:x.created_at};});
+    PRODUCTOS=(res[3].data||[]).map(function(x){return {id:x.id,name:x.name,unit:x.unit,by:x.creado_por,at:x.created_at};});
+    producciones=(res[4].data||[]).map(function(x){return {id:x.id,fecha:x.fecha,carne:x.carne_id,tam:x.tam_id,kg:Number(x.kg),mila:Number(x.mila),items:Array.isArray(x.items)?x.items:[],by:x.creado_por,at:x.created_at};});
+    salidas=(res[5].data||[]).map(function(x){return {id:x.id,fecha:x.fecha,local:x.local_id,carne:x.carne_id,mila:Number(x.mila),nota:x.nota||"",by:x.creado_por,at:x.created_at};});
+    PROFILES=(res[6].data||[]).map(function(x){return {id:x.id,nombre:x.nombre||x.email||"—",email:x.email||""};});
+    USERS={}; PROFILES.forEach(function(p){USERS[p.id]=p.nombre;});
+  }
+
+  // Asegura que el usuario actual tenga su ficha en "profiles" (con nombre).
+  async function ensureProfile(user,name){
+    if(!user) return;
+    var sb=sbReady(), nm=(name||"").trim();
+    var existing=PROFILES.filter(function(p){return p.id===user.id;})[0];
+    var row={id:user.id,email:user.email||""};
+    if(nm) row.nombre=nm; else if(!existing) row.nombre=(user.email||"").split("@")[0];
+    try{
+      var r=await sb.from("profiles").upsert(row,{onConflict:"id"}).select().single();
+      var d=r.data||row;
+      var np={id:d.id||user.id,nombre:d.nombre||row.nombre||(user.email||"").split("@")[0]||"—",email:d.email||user.email||""};
+      PROFILES=PROFILES.filter(function(p){return p.id!==np.id;}).concat([np]);
+      USERS[np.id]=np.nombre;
+    }catch(e){ console.warn("perfil:",e); if(!existing){var f={id:user.id,nombre:row.nombre||"—",email:user.email||""};PROFILES.push(f);USERS[f.id]=f.nombre;} }
+  }
+
+  async function seedIfEmpty(){
+    if(CARNES.length || TAMANOS.length || PRODUCTOS.length) return false;
+    var sb=sbReady();
+    var prodSeed=[["Pan rallado","g"],["Huevo","u"],["Sal","g"],["Condimentos","g"],["Ajo","g"],["Perejil","g"],["Harina","g"],["Queso","g"],["Jamón","u"],["Salsa de tomate","ml"]];
+    var ins=await sb.from("productos").insert(prodSeed.map(function(p){return {name:p[0],unit:p[1]};})).select();
+    if(ins.error) throw ins.error;
+    var pid={}; (ins.data||[]).forEach(function(r){pid[r.name]=r.id;});
+    var ti=await sb.from("tamanos").insert([{name:"Milanesa"},{name:"Pizzanesa"},{name:"Almuerzo"}]);
+    if(ti.error) throw ti.error;
+    var carneSeed=[
+      ["Nalga (vacuna)",[["Pan rallado",500],["Huevo",6],["Sal",20],["Condimentos",15],["Ajo",10],["Perejil",8]]],
+      ["Cuadrada (vacuna)",[["Pan rallado",500],["Huevo",6],["Sal",20],["Condimentos",15],["Ajo",10],["Perejil",8]]],
+      ["Pollo",[["Pan rallado",450],["Huevo",5],["Sal",18],["Condimentos",12]]],
+      ["Cerdo",[["Pan rallado",500],["Huevo",6],["Sal",20],["Condimentos",15],["Ajo",10]]],
+      ["Soja / veggie",[["Pan rallado",400],["Sal",15],["Condimentos",12],["Harina",120]]]
+    ];
+    var ci=await sb.from("carnes").insert(carneSeed.map(function(c){return {name:c[0],receta:c[1].map(function(it){return [pid[it[0]]||null,it[1]];}).filter(function(x){return x[0];})};}));
+    if(ci.error) throw ci.error;
+    return true;
+  }
+
+  // ---------- DEMO (mockup sin conexión) ----------
+  function seedDemo(){
+    PROFILES=[
+      {id:"u-osva",nombre:"Osva",email:"osva@milanesas.com"},
+      {id:"u-juan",nombre:"Juan",email:"juan@milanesas.com"},
+      {id:"u-caro",nombre:"Caro",email:"caro@milanesas.com"}
+    ];
+    USERS={}; PROFILES.forEach(function(p){USERS[p.id]=p.nombre;});
+    var d20="2026-08-20T10:00:00", d21="2026-08-21T09:15:00";
+    CARNES=[
+      {id:"c1",name:"Nalga (vacuna)",by:"u-osva",at:d20},
+      {id:"c2",name:"Pollo",by:"u-osva",at:d20},
+      {id:"c3",name:"Cerdo",by:"u-juan",at:d21},
+      {id:"c4",name:"Soja / veggie",by:"u-caro",at:d21}
+    ];
+    RECETAS={c1:[["p1",500],["p2",6],["p3",20],["p4",15]],c2:[["p1",450],["p2",5],["p4",12]],c3:[["p1",500],["p2",6],["p5",10]],c4:[["p1",400],["p3",15]]};
+    TAMANOS=[{id:"t1",name:"Milanesa",by:"u-osva",at:d20},{id:"t2",name:"Pizzanesa",by:"u-osva",at:d20},{id:"t3",name:"Almuerzo",by:"u-juan",at:d21}];
+    LOCALES=[{id:"l1",name:"Local Centro",by:"u-osva",at:d20},{id:"l2",name:"Local Norte",by:"u-juan",at:d21},{id:"l3",name:"Sucursal Palermo",by:"u-caro",at:d21}];
+    PRODUCTOS=[
+      {id:"p1",name:"Pan rallado",unit:"g",by:"u-osva",at:d20},
+      {id:"p2",name:"Huevo",unit:"u",by:"u-osva",at:d20},
+      {id:"p3",name:"Sal",unit:"g",by:"u-osva",at:d20},
+      {id:"p4",name:"Condimentos",unit:"g",by:"u-juan",at:d21},
+      {id:"p5",name:"Ajo",unit:"g",by:"u-caro",at:d21}
+    ];
+    producciones=[
+      {id:"pr1",fecha:"2026-08-23",carne:"c1",tam:"t1",kg:10,mila:60,items:[["p1",500],["p2",6],["p3",20]],by:"u-osva",at:"2026-08-23T14:20:00"},
+      {id:"pr2",fecha:"2026-08-23",carne:"c2",tam:"t2",kg:8,mila:40,items:[["p1",450],["p2",5]],by:"u-juan",at:"2026-08-23T11:05:00"},
+      {id:"pr3",fecha:"2026-08-22",carne:"c3",tam:"t1",kg:6,mila:36,items:[["p1",500]],by:"u-caro",at:"2026-08-22T09:40:00"}
+    ];
+    salidas=[
+      {id:"s1",fecha:"2026-08-23",local:"l1",carne:"c1",mila:24,nota:"retiró Juan",by:"u-osva",at:"2026-08-23T15:10:00"},
+      {id:"s2",fecha:"2026-08-22",local:"l2",carne:"c2",mila:20,nota:"",by:"u-juan",at:"2026-08-22T12:30:00"}
+    ];
+    currentUserId="u-osva";
+  }
+  function startDemoApp(){
+    seedDemo();
+    var nm=$("authName").value.trim();
+    if(nm){ PROFILES[0].nombre=nm; USERS["u-osva"]=nm; }
+    $("auth").hidden=true; $("loader").hidden=true; $("demoRib").hidden=false;
+    renderAll();
+    $("acctEmail").textContent=(USERS[currentUserId]||"Demo")+" · modo demo (sin conexión)";
+    setSave("");
+    go("principal");
+  }
+
+  // ---------- save indicator ----------
+  function setSave(kind){
+    var s=$("saveState");if(!s)return;
+    s.textContent = kind==="saving" ? " · Guardando…" : kind==="error" ? " · Error al guardar" : kind==="saved" ? " · Guardado" : DEMO ? "" : "";
+  }
+  async function withSave(fn){
+    setSave("saving");
+    try{ await fn(); setSave(DEMO?"":"saved"); return true; }
+    catch(e){ console.error(e); setSave("error"); toast('<span class="k">!</span> No se pudo guardar'); return false; }
+  }
+
+  // ---------- stock ----------
+  function totalProd(){return producciones.reduce(function(a,p){return a+(Number(p.mila)||0);},0);}
+  function totalSal(){return salidas.reduce(function(a,s){return a+(Number(s.mila)||0);},0);}
+  function refreshStock(){$("stockN").textContent=nf(totalProd()-totalSal());}
+
+  // ---------- selects ----------
+  function fillSelect(sel,list,firstOpt){
+    if(!sel)return;
+    var html=firstOpt?'<option value="">'+firstOpt+'</option>':"";
+    html+=list.map(function(o){return '<option value="'+o.id+'">'+esc(o.name)+'</option>';}).join("");
+    var cur=sel.value; sel.innerHTML=html;
+    if(cur&&list.some(function(o){return o.id===cur;}))sel.value=cur;
+  }
+  function refreshSelects(){
+    fillSelect($("pCarne"),CARNES,CARNES.length?null:"— agregá una carne —");
+    fillSelect($("pTam"),TAMANOS,TAMANOS.length?null:"— agregá un tamaño —");
+    fillSelect($("sLocal"),LOCALES,LOCALES.length?null:"— agregá un local —");
+    fillSelect($("sCarne"),CARNES,"Todas / sin especificar");
+    fillSelect($("fCarne"),CARNES,"Todas las carnes");
+    fillSelect($("fLocal"),LOCALES,"Todos los locales");
+    fillSelect($("fPersona"),PROFILES.map(function(p){return {id:p.id,name:p.nombre};}),"Todas las personas");
+  }
+
+  // ---------- draft (productos utilizados) ----------
+  function loadReceta(carneId){
+    var r=RECETAS[carneId]||[];
+    draftItems=r.map(function(x){return {prodId:x[0],qty:x[1]};});
+    renderDraft();
+  }
+  function renderDraft(){
+    var box=$("prodItems"); box.innerHTML="";
+    if(!draftItems.length){
+      var e=el("div"); e.style.cssText="font-size:12.5px;color:var(--ink-3);font-style:italic;padding:4px 2px;";
+      e.textContent="Sin productos. Agregá los que uses con el botón de abajo.";
+      box.appendChild(e);
+    }
+    draftItems.forEach(function(it,i){
+      var p=prod(it.prodId); if(!p)return;
+      var row=el("div","prow");
+      var pn=el("div","pn"); pn.innerHTML="<b>"+esc(p.name)+"</b><small>"+esc(p.unit)+"</small>";
+      var st=el("div","stepper");
+      var minus=el("button");minus.type="button";minus.textContent="–";minus.setAttribute("aria-label","menos");
+      var qv=el("input","qv");qv.type="text";qv.inputMode="decimal";qv.value=fmtQty(it.qty);qv.setAttribute("aria-label",p.name+" cantidad");
+      var plus=el("button");plus.type="button";plus.textContent="+";plus.setAttribute("aria-label","más");
+      minus.onclick=function(){var s=STEP[p.unit]||1;it.qty=Math.max(0,r2(it.qty-s));qv.value=fmtQty(it.qty);};
+      plus.onclick=function(){var s=STEP[p.unit]||1;it.qty=r2(it.qty+s);qv.value=fmtQty(it.qty);};
+      qv.addEventListener("input",function(){it.qty=parseNum(qv.value);});
+      qv.addEventListener("focus",function(){qv.select();});
+      qv.addEventListener("blur",function(){qv.value=fmtQty(it.qty);});
+      st.appendChild(minus);st.appendChild(qv);st.appendChild(plus);
+      var rm=el("button","rm");rm.type="button";rm.innerHTML="&times;";rm.title="Quitar";
+      rm.onclick=function(){draftItems.splice(i,1);renderDraft();};
+      row.appendChild(pn);row.appendChild(st);row.appendChild(rm);
+      box.appendChild(row);
+    });
+    $("prodCount").textContent=draftItems.length?draftItems.length+(draftItems.length===1?" producto":" productos"):"";
+    renderCatalog();
+  }
+  function renderCatalog(){
+    var cat=$("catalog"); var used=draftItems.map(function(x){return x.prodId;});
+    var avail=PRODUCTOS.filter(function(p){return used.indexOf(p.id)<0;});
+    cat.innerHTML="";
+    if(!avail.length){var n=el("span","none");n.textContent="No hay más productos. Agregá otros en Configuración.";cat.appendChild(n);return;}
+    avail.forEach(function(p){
+      var b=el("button","ct");b.type="button";b.textContent="+ "+p.name;
+      b.onclick=function(){draftItems.push({prodId:p.id,qty:DEF[p.unit]||1});cat.classList.remove("open");renderDraft();};
+      cat.appendChild(b);
+    });
+  }
+
+  // ---------- toast ----------
+  var toastT=null;
+  function toast(msg){
+    var t=$("toast");t.innerHTML=msg;t.classList.add("show");
+    if(toastT)clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove("show");},2200);
+  }
+
+  // ---------- history ----------
+  function inRange(iso){
+    var d=String(iso||"");
+    if(fDesde && d<fDesde) return false;
+    if(fHasta && d>fHasta) return false;
+    return true;
+  }
+  function whoTag(id){
+    return '<span class="who"><span class="dot">'+esc(initials(userName(id)))+'</span>'+esc(userName(id))+'</span>';
+  }
+  function updateHistFilters(){
+    // El filtro de local solo aplica a Salidas; en Producción y Todo se oculta y se limpia.
+    var showLocal=(fTipo==="sal"), fl=$("fLocal");
+    fl.hidden=!showLocal;
+    if(!showLocal && fl.value){ fl.value=""; fLocal=""; }
+  }
+  function renderHist(){
+    var carne=$("fCarne").value, local=$("fLocal").value, persona=$("fPersona").value, rows=[];
+    // Producción no tiene local: si se filtra por local, se muestran solo salidas de ese local
+    if((fTipo==="todo"||fTipo==="prod") && !local) producciones.forEach(function(p){if(inRange(p.fecha)&&(!carne||p.carne===carne)&&(!persona||p.by===persona))rows.push({t:"prod",o:p});});
+    if(fTipo==="todo"||fTipo==="sal") salidas.forEach(function(s){if(inRange(s.fecha)&&(!carne||s.carne===carne)&&(!local||s.local===local)&&(!persona||s.by===persona))rows.push({t:"sal",o:s});});
+    rows.sort(function(a,b){return String(b.o.fecha).localeCompare(String(a.o.fecha))||String(b.o.at||"").localeCompare(String(a.o.at||""));});
+    var box=$("histList");
+    if(!rows.length){box.innerHTML='<div class="hempty"><span class="ic">🗂️</span>No hay movimientos con esos filtros.</div>';return;}
+    box.innerHTML=rows.map(function(r){
+      var o=r.o;
+      var by='<div class="hby">'+whoTag(o.by)+'<span>· cargó '+esc(fmtWhen(o.at))+'</span></div>';
+      if(r.t==="prod"){
+        var its=(o.items||[]).map(function(x){var p=prod(x[0]);return p?esc(p.name)+" <b>"+nf(x[1])+" "+esc(p.unit)+"</b>":"";}).filter(Boolean).join(" · ");
+        return '<div class="hitem"><div class="hh">'+
+          '<span class="badge prod">▲ Producción</span><span class="hcar">'+esc(carneName(o.carne))+'</span>'+
+          (o.tam?'<span class="szt">'+esc(tamName(o.tam))+'</span>':'')+
+          '<span class="hm" style="color:var(--good)">+'+nf(o.mila)+'</span>'+
+          '<button class="hdel" data-hdel="'+o.id+'" data-hk="prod" type="button">✕</button></div>'+
+          '<div class="hmeta"><span>'+fmtDate(o.fecha)+'</span><span>'+nf(o.kg)+' kg de carne</span></div>'+
+          (its?'<div class="items">'+its+'</div>':'')+by+'</div>';
+      } else {
+        return '<div class="hitem"><div class="hh">'+
+          '<span class="badge sal">▼ Salida</span><span class="hcar">'+esc(localName(o.local))+'</span>'+
+          '<span class="hm" style="color:var(--crit)">−'+nf(o.mila)+'</span>'+
+          '<button class="hdel" data-hdel="'+o.id+'" data-hk="sal" type="button">✕</button></div>'+
+          '<div class="hmeta"><span>'+fmtDate(o.fecha)+'</span><span>'+(o.carne?esc(carneName(o.carne)):"—")+(o.nota?" · "+esc(o.nota):"")+'</span></div>'+by+'</div>';
+      }
+    }).join("");
+  }
+
+  // ---------- config ----------
+  function metaLine(o){
+    var who=o.by?userName(o.by):"", when=o.at?fmtWhen(o.at):"";
+    if(!who&&!when)return"";
+    return '<span class="lmeta">por '+esc(who||"—")+(when?" · "+esc(when):"")+'</span>';
+  }
+  function cfgRows(list,delAttr,withUnit){
+    if(!list.length)return'<div style="font-size:12px;color:var(--ink-3)">Sin datos cargados.</div>';
+    return list.map(function(o){
+      return '<div class="litem"><div class="col"><span class="ln">'+esc(o.name)+'</span>'+metaLine(o)+'</div>'+
+        (withUnit?'<span class="lu">'+esc(o.unit)+'</span>':'')+
+        '<button class="lx" data-'+delAttr+'="'+o.id+'" type="button">&times;</button></div>';
+    }).join("");
+  }
+  function renderPersonas(){
+    var box=$("cfgPersonas");
+    if(!PROFILES.length){box.innerHTML='<div style="font-size:12px;color:var(--ink-3)">Todavía no hay personas registradas.</div>';return;}
+    box.innerHTML=PROFILES.map(function(p){
+      return '<div class="litem persona"><span class="dot">'+esc(initials(p.nombre))+'</span>'+
+        '<div class="col"><span class="ln">'+esc(p.nombre)+(p.id===currentUserId?'<span class="me">vos</span>':'')+'</span>'+
+        (p.email?'<span class="lmeta">'+esc(p.email)+'</span>':'')+'</div></div>';
+    }).join("");
+  }
+  function renderConfig(){
+    renderPersonas();
+    $("cfgCarnes").innerHTML=cfgRows(CARNES,"delc",false);
+    $("cfgTam").innerHTML=cfgRows(TAMANOS,"delt",false);
+    $("cfgLocales").innerHTML=cfgRows(LOCALES,"dell",false);
+    $("cfgProds").innerHTML=cfgRows(PRODUCTOS,"delp",true);
+  }
+
+  // ---------- navigation ----------
+  var SCREENS={principal:"Principal",historial:"Historial",config:"Configuración"};
+  function go(s){
+    $("scr-principal").hidden=s!=="principal";
+    $("scr-historial").hidden=s!=="historial";
+    $("scr-config").hidden=s!=="config";
+    $("screenName").textContent=SCREENS[s];
+    Array.prototype.forEach.call($("nav").children,function(b){b.classList.toggle("on",b.getAttribute("data-s")===s);});
+    if(s==="historial"){updateHistFilters();renderHist();}
+    if(s==="config")renderConfig();
+    $("scr-"+s).scrollTop=0;
+  }
+
+  function renderAll(){
+    refreshSelects(); refreshStock();
+    loadReceta($("pCarne").value);
+    renderConfig();
+  }
+  function resetConfirms(){
+    Array.prototype.forEach.call(document.querySelectorAll(".confirm"),function(b){b.classList.remove("confirm");if(b.classList.contains("hdel"))b.textContent="✕";});
+  }
+
+  // ---------- auth ----------
+  var authMode="login";
+  function showAuthErr(m){var e=$("authErr");e.textContent=m;e.hidden=false;}
+  function clearAuthErr(){$("authErr").hidden=true;}
+  function updateAuthUI(){
+    $("authBtn").textContent = authMode==="login" ? "Ingresar" : "Crear cuenta";
+    $("authToggle").textContent = authMode==="login" ? "¿No tenés cuenta? Crear una" : "Ya tengo cuenta · Ingresar";
+    $("authMsg").textContent = DEMO ? "Modo demo — tocá Ingresar para ver la app con datos de ejemplo."
+      : authMode==="login" ? "Ingresá para administrar tu producción." : "Creá tu cuenta para empezar.";
+    $("nameField").hidden = authMode!=="signup";
+    $("authPass").setAttribute("autocomplete", authMode==="login" ? "current-password" : "new-password");
+  }
+  function friendlyErr(e){
+    var m=(e&&e.message)||String(e);
+    if(/Invalid login/i.test(m)) return "Email o contraseña incorrectos.";
+    if(/already registered/i.test(m)) return "Ese email ya tiene cuenta. Probá ingresar.";
+    if(/at least 6/i.test(m)||/Password should/i.test(m)) return "La contraseña tiene que tener al menos 6 caracteres.";
+    if(/rate limit/i.test(m)) return "Demasiados intentos. Esperá un momento.";
+    return m;
+  }
+
+  async function enterApp(){
+    $("auth").hidden=true;
+    $("loader").hidden=false;
+    try{
+      await loadAll();
+      if(await seedIfEmpty()){ await loadAll(); }
+      var u=await sbReady().auth.getUser();
+      var user=u&&u.data&&u.data.user;
+      currentUserId=user?user.id:null;
+      await ensureProfile(user,pendingName); pendingName="";
+      renderAll();
+      $("acctEmail").textContent=(currentUserId&&USERS[currentUserId]?USERS[currentUserId]+" · ":"")+((user&&user.email)||"Sesión iniciada");
+      setSave("saved");
+      go("principal");
+    }catch(e){
+      console.error(e);
+      toast('<span class="k">!</span> Error al cargar los datos');
+      $("acctEmail").textContent="Error de conexión";
+    }
+    $("loader").hidden=true;
+  }
+
+  async function doAuth(){
+    if(DEMO){ startDemoApp(); return; }
+    clearAuthErr();
+    var sb=sbReady();
+    if(!sb){ showAuthErr("Falta configurar Supabase: pegá tus claves en config.js"); return; }
+    var email=$("authEmail").value.trim(), pass=$("authPass").value;
+    if(!email||!pass){ showAuthErr("Completá email y contraseña."); return; }
+    if(authMode==="signup" && !$("authName").value.trim()){ showAuthErr("Poné tu nombre para que el equipo sepa quién carga."); $("authName").focus(); return; }
+    pendingName=$("authName").value.trim();
+    $("authBtn").disabled=true; $("authBtn").textContent = authMode==="login" ? "Ingresando…" : "Creando…";
+    try{
+      var res = authMode==="login"
+        ? await sb.auth.signInWithPassword({email:email,password:pass})
+        : await sb.auth.signUp({email:email,password:pass});
+      if(res.error) throw res.error;
+      if(authMode==="signup" && !(res.data && res.data.session)){
+        showAuthErr("Cuenta creada. Si te pide confirmar el email, revisá tu correo y después ingresá.");
+        authMode="login"; updateAuthUI();
+      } else {
+        await enterApp();
+      }
+    }catch(e){ showAuthErr(friendlyErr(e)); }
+    finally{ $("authBtn").disabled=false; updateAuthUI(); }
+  }
+
+  // ---------- events ----------
+  function bind(){
+    $("pFecha").value=todayISO(); $("sFecha").value=todayISO();
+
+    // auth
+    $("authBtn").addEventListener("click",doAuth);
+    $("authPass").addEventListener("keydown",function(e){if(e.key==="Enter")doAuth();});
+    $("authEmail").addEventListener("keydown",function(e){if(e.key==="Enter")$("authPass").focus();});
+    $("authName").addEventListener("keydown",function(e){if(e.key==="Enter")$("authEmail").focus();});
+    $("authToggle").addEventListener("click",function(){authMode=authMode==="login"?"signup":"login";clearAuthErr();updateAuthUI();});
+    $("logoutBtn").addEventListener("click",async function(){if(!DEMO){try{await sbReady().auth.signOut();}catch(e){}}location.reload();});
+
+    // mode toggle
+    $("modeSeg").addEventListener("click",function(e){
+      var b=e.target.closest("button[data-mode]"); if(!b)return;
+      mode=b.getAttribute("data-mode");
+      Array.prototype.forEach.call($("modeSeg").children,function(x){x.classList.toggle("on",x===b);});
+      $("modeSeg").classList.toggle("salida",mode==="sal");
+      $("paneProd").hidden=mode!=="prod"; $("paneSal").hidden=mode!=="sal";
+    });
+    $("pCarne").addEventListener("change",function(){loadReceta(this.value);});
+    $("addProdBtn").addEventListener("click",function(){$("catalog").classList.toggle("open");});
+
+    // register produccion
+    $("doProd").addEventListener("click",function(){
+      var mila=num($("pMila").value);
+      if(!$("pCarne").value){toast("Elegí el tipo de carne (o agregá una en Config)");return;}
+      if(mila<=0){toast("Poné cuántas milanesas salieron");$("pMila").focus();return;}
+      var row={fecha:$("pFecha").value||todayISO(),carne_id:$("pCarne").value||null,tam_id:$("pTam").value||null,
+        kg:num($("pKg").value),mila:mila,items:draftItems.map(function(x){return [x.prodId,x.qty];})};
+      $("doProd").disabled=true;
+      withSave(async function(){
+        var d=await dbInsert("producciones",row);
+        producciones.unshift({id:d.id,fecha:d.fecha,carne:d.carne_id,tam:d.tam_id,kg:Number(d.kg),mila:Number(d.mila),items:Array.isArray(d.items)?d.items:[],by:d.creado_por,at:d.created_at});
+        refreshStock();
+        $("pMila").value=""; $("pKg").value="";
+        toast('<span class="k">✓</span> '+esc(tamName(row.tam_id)||"Producción")+' · '+nf(mila)+' u.');
+      }).then(function(){$("doProd").disabled=false;});
+    });
+
+    // register salida
+    $("doSal").addEventListener("click",function(){
+      var mila=num($("sMila").value);
+      if(!$("sLocal").value){toast("Elegí un local (o agregá uno en Config)");return;}
+      if(mila<=0){toast("Poné cuántas milanesas salen");$("sMila").focus();return;}
+      var row={fecha:$("sFecha").value||todayISO(),local_id:$("sLocal").value||null,carne_id:$("sCarne").value||null,mila:mila,nota:$("sNota").value.trim()};
+      $("doSal").disabled=true;
+      withSave(async function(){
+        var d=await dbInsert("salidas",row);
+        salidas.unshift({id:d.id,fecha:d.fecha,local:d.local_id,carne:d.carne_id,mila:Number(d.mila),nota:d.nota||"",by:d.creado_por,at:d.created_at});
+        refreshStock();
+        $("sMila").value=""; $("sNota").value="";
+        toast('<span class="k">✓</span> Salida · '+nf(mila)+' u.');
+      }).then(function(){$("doSal").disabled=false;});
+    });
+
+    // nav
+    $("nav").addEventListener("click",function(e){var b=e.target.closest("button[data-s]");if(b){resetConfirms();go(b.getAttribute("data-s"));}});
+
+    // history filters + delete
+    $("tipoChips").addEventListener("click",function(e){var b=e.target.closest("button[data-t]");if(!b)return;fTipo=b.getAttribute("data-t");Array.prototype.forEach.call($("tipoChips").children,function(x){x.classList.toggle("on",x===b);});updateHistFilters();renderHist();});
+    $("fDesde").addEventListener("change",function(){fDesde=this.value;renderHist();});
+    $("fHasta").addEventListener("change",function(){fHasta=this.value;renderHist();});
+    $("clearFechas").addEventListener("click",function(){fDesde="";fHasta="";$("fDesde").value="";$("fHasta").value="";renderHist();});
+    $("fCarne").addEventListener("change",renderHist);
+    $("fLocal").addEventListener("change",renderHist);
+    $("fPersona").addEventListener("change",renderHist);
+    $("histList").addEventListener("click",function(e){
+      var b=e.target.closest("button[data-hdel]"); if(!b)return;
+      var id=b.getAttribute("data-hdel"), k=b.getAttribute("data-hk");
+      if(b.classList.contains("confirm")){
+        withSave(async function(){
+          await dbDelete(k==="prod"?"producciones":"salidas",id);
+          if(k==="prod")producciones=producciones.filter(function(x){return x.id!==id;});
+          else salidas=salidas.filter(function(x){return x.id!==id;});
+          refreshStock(); renderHist();
+        });
+      } else {
+        resetConfirms(); b.classList.add("confirm"); b.textContent="Borrar";
+        setTimeout(function(){if(b&&b.classList){b.classList.remove("confirm");b.textContent="✕";}},2600);
+      }
+    });
+
+    // config add / delete
+    document.addEventListener("click",function(e){
+      var t=e.target, add=t.getAttribute&&t.getAttribute("data-add");
+      if(add==="carne"){var v=$("newCarne").value.trim();if(v)withSave(async function(){var d=await dbInsert("carnes",{name:v,receta:[]});CARNES.push({id:d.id,name:d.name,by:d.creado_por,at:d.created_at});RECETAS[d.id]=[];$("newCarne").value="";refreshSelects();renderConfig();toast("Carne agregada");});return;}
+      if(add==="tam"){var vt=$("newTam").value.trim();if(vt)withSave(async function(){var d=await dbInsert("tamanos",{name:vt});TAMANOS.push({id:d.id,name:d.name,by:d.creado_por,at:d.created_at});$("newTam").value="";refreshSelects();renderConfig();toast("Tamaño agregado");});return;}
+      if(add==="local"){var v2=$("newLocal").value.trim();if(v2)withSave(async function(){var d=await dbInsert("locales",{name:v2});LOCALES.push({id:d.id,name:d.name,by:d.creado_por,at:d.created_at});$("newLocal").value="";refreshSelects();renderConfig();toast("Local agregado");});return;}
+      if(add==="prod"){var v3=$("newProd").value.trim();if(v3)withSave(async function(){var d=await dbInsert("productos",{name:v3,unit:$("newProdU").value});PRODUCTOS.push({id:d.id,name:d.name,unit:d.unit,by:d.creado_por,at:d.created_at});$("newProd").value="";renderConfig();renderCatalog();toast("Producto agregado");});return;}
+
+      var dc=t.getAttribute&&t.getAttribute("data-delc");
+      var dt=t.getAttribute&&t.getAttribute("data-delt");
+      var dl=t.getAttribute&&t.getAttribute("data-dell");
+      var dp=t.getAttribute&&t.getAttribute("data-delp");
+      var delId=dc||dt||dl||dp;
+      if(delId){
+        if(!t.classList.contains("confirm")){
+          resetConfirms(); t.classList.add("confirm");
+          setTimeout(function(){if(t&&t.classList)t.classList.remove("confirm");},2600);
+          return;
+        }
+        if(dc)withSave(async function(){await dbDelete("carnes",dc);CARNES=CARNES.filter(function(x){return x.id!==dc;});delete RECETAS[dc];refreshSelects();renderConfig();});
+        else if(dt)withSave(async function(){await dbDelete("tamanos",dt);TAMANOS=TAMANOS.filter(function(x){return x.id!==dt;});refreshSelects();renderConfig();});
+        else if(dl)withSave(async function(){await dbDelete("locales",dl);LOCALES=LOCALES.filter(function(x){return x.id!==dl;});refreshSelects();renderConfig();});
+        else if(dp)withSave(async function(){await dbDelete("productos",dp);PRODUCTOS=PRODUCTOS.filter(function(x){return x.id!==dp;});renderConfig();renderCatalog();});
+        return;
+      }
+    });
+  }
+
+  // ---------- init ----------
+  async function init(){
+    bind();
+    var sb=sbReady();
+    if(!sb){
+      // Sin Supabase configurado → modo demo (mockup con datos de ejemplo)
+      DEMO=true;
+      $("loader").hidden=true;
+      $("auth").hidden=false;
+      updateAuthUI();
+      return;
+    }
+    updateAuthUI();
+    try{
+      var s=await sb.auth.getSession();
+      if(s && s.data && s.data.session){ await enterApp(); }
+      else { $("loader").hidden=true; $("auth").hidden=false; }
+    }catch(e){
+      $("loader").hidden=true; $("auth").hidden=false;
+    }
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+})();
+</script>
+</body>
+</html>
