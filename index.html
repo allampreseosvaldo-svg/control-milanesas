@@ -666,8 +666,11 @@
 
   // ---------- draft (productos utilizados) ----------
   function loadReceta(carneId){
-    var r=RECETAS[carneId]||[];
-    draftItems=r.map(function(x){return {prodId:x[0],qty:x[1]};});
+    // Cargar TODOS los productos ya agregados. Si la carne tiene receta,
+    // se precarga la cantidad; el resto queda en 0 (no se guardan los 0).
+    var r=RECETAS[carneId]||[], qtyById={};
+    r.forEach(function(x){qtyById[x[0]]=x[1];});
+    draftItems=PRODUCTOS.map(function(p){return {prodId:p.id, qty:(qtyById[p.id]!=null?qtyById[p.id]:0)};});
     renderDraft();
   }
   function renderDraft(){
@@ -696,7 +699,8 @@
       row.appendChild(pn);row.appendChild(st);row.appendChild(rm);
       box.appendChild(row);
     });
-    $("prodCount").textContent=draftItems.length?draftItems.length+(draftItems.length===1?" producto":" productos"):"";
+    var usados=draftItems.filter(function(x){return x.qty>0;}).length;
+    $("prodCount").textContent=usados?usados+(usados===1?" en uso":" en uso"):"";
     renderCatalog();
   }
   function renderCatalog(){
@@ -915,7 +919,7 @@
       if(!$("pCarne").value){toast("Elegí el tipo de carne (o agregá una en Config)");return;}
       if(mila<=0){toast("Poné cuántas milanesas salieron");$("pMila").focus();return;}
       var row={fecha:$("pFecha").value||todayISO(),carne_id:$("pCarne").value||null,tam_id:$("pTam").value||null,
-        kg:num($("pKg").value),mila:mila,items:draftItems.map(function(x){return [x.prodId,x.qty];})};
+        kg:num($("pKg").value),mila:mila,items:draftItems.filter(function(x){return x.qty>0;}).map(function(x){return [x.prodId,x.qty];})};
       $("doProd").disabled=true;
       withSave(async function(){
         var d=await dbInsert("producciones",row);
