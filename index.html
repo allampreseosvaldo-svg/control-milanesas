@@ -100,6 +100,9 @@
     color:var(--ink-2);background:none;border:none;padding:9px;border-radius:9px;cursor:pointer;transition:.15s;}
   .seg button.on{background:var(--accent);color:#FFF7EA;box-shadow:0 2px 8px -2px rgba(201,120,31,.5);}
   .seg.salida button.on{background:var(--crit);box-shadow:0 2px 8px -2px rgba(194,74,46,.5);}
+  .editbanner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--warn-bg);border:1px solid var(--warn);border-radius:12px;padding:9px 13px;margin-bottom:14px;font-size:13px;font-weight:700;color:var(--accent-ink);}
+  .editbanner[hidden]{display:none;}
+  .editbanner button{background:none;border:1px solid var(--accent);color:var(--accent-ink);border-radius:8px;padding:5px 12px;font:inherit;font-weight:700;font-size:12px;cursor:pointer;}
 
   /* ---- card & fields ---- */
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px;margin-bottom:14px;}
@@ -174,6 +177,8 @@
   .hitem .hcar{font-weight:700;font-size:14.5px;}
   .hitem .szt{font-size:11px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);padding:2px 8px;border-radius:999px;flex:0 0 auto;}
   .hitem .hm{margin-left:auto;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:17px;font-variant-numeric:tabular-nums;}
+  .hitem .hedit{margin-left:6px;border:1px solid var(--line-strong);background:none;color:var(--accent-ink);border-radius:8px;padding:3px 8px;font-size:12px;cursor:pointer;flex:0 0 auto;}
+  .hitem .hedit:hover{background:var(--accent-soft);border-color:var(--accent);}
   .hitem .hdel{margin-left:6px;border:1px solid var(--line-strong);background:none;color:var(--ink-3);border-radius:8px;padding:3px 8px;font-size:11px;cursor:pointer;font-weight:600;flex:0 0 auto;}
   .hitem .hdel.confirm{border-color:var(--crit);color:var(--crit);background:var(--crit-bg);}
   .hitem .hmeta{font-size:12px;color:var(--ink-3);margin-top:6px;display:flex;justify-content:space-between;gap:10px;}
@@ -295,6 +300,9 @@
   .hsum .t .v{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;line-height:1;font-variant-numeric:tabular-nums;}
   .hsum .t .l{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-top:6px;}
   .hsum .t.rinde .v{color:var(--good);}
+  .stk-rinde{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;font-weight:700;}
+  .stk-rinde .w{color:var(--crit);background:var(--crit-bg);padding:3px 9px;border-radius:999px;}
+  .stk-rinde .r{color:var(--good);background:var(--good-bg);padding:3px 9px;border-radius:999px;}
   .desp-hint{margin-top:8px;font-size:12.5px;font-weight:700;display:flex;gap:8px;flex-wrap:wrap;}
   .desp-hint[hidden]{display:none;}
   .desp-hint .r{color:var(--good);background:var(--good-bg);padding:3px 9px;border-radius:999px;}
@@ -353,6 +361,7 @@
       <button data-mode="prod" class="on" type="button">▲ Producir</button>
       <button data-mode="sal" type="button">▼ Salida</button>
     </div>
+    <div class="editbanner" id="editBanner" hidden><span id="editBannerT">Editando…</span><button type="button" id="editCancel">Cancelar</button></div>
 
     <!-- PRODUCIR -->
     <div id="paneProd">
@@ -620,6 +629,7 @@
   var STEP={g:50,ml:50,kg:0.5,u:1}, DEF={g:100,ml:100,kg:1,u:1};
   var draftItems=[], mode="prod", fTipo="todo", fDesde="", fHasta="", fLocal="", editProdId=null;
   var editMode="peso", editUnit="g", efFactors=["",""], catSel=[];
+  var editProduccionId=null, editSalidaId=null;
   var DEMO=false, demoSeq=0, pendingName="";
 
   function carneName(id){var c=CARNES.filter(function(x){return x.id===id;})[0];return c?c.name:"—";}
@@ -899,37 +909,34 @@
     var sum=$("histSummary"); if(!sum)return;
     var prods=rows.filter(function(r){return r.t==="prod";}).map(function(r){return r.o;});
     if(!prods.length){sum.innerHTML="";return;}
-    var mila=0,desp=0,kg=0, mapC={}, mapT={};
+    var mapC={}, mapT={};
     prods.forEach(function(o){
-      mila+=Number(o.mila)||0;desp+=Number(o.desperdicio)||0;kg+=Number(o.kg)||0;
       var c=o.carne||'—',t=o.tam||'—',q=Number(o.mila)||0;
-      if(!mapC[c])mapC[c]={tot:0,tam:{}}; mapC[c].tot+=q; mapC[c].tam[t]=(mapC[c].tam[t]||0)+q;
+      if(!mapC[c])mapC[c]={tot:0,tam:{},desp:0,kg:0};
+      mapC[c].tot+=q; mapC[c].tam[t]=(mapC[c].tam[t]||0)+q;
+      mapC[c].desp+=Number(o.desperdicio)||0; mapC[c].kg+=Number(o.kg)||0;
       mapT[t]=(mapT[t]||0)+q;
     });
-    var rinde=(kg+desp)>0?(kg/(kg+desp)*100):0;
-    var html='<div class="hsum">'+
-      '<div class="t"><div class="v">'+nf(desp)+' kg</div><div class="l">Desperdicio</div></div>'+
-      '<div class="t rinde"><div class="v">'+(desp>0?pct1(rinde):'—')+'</div><div class="l">Rinde prom.</div></div>'+
-      '</div>';
-    // Producido por proteína (con tamaños)
+    // Por proteína: producido (con tamaños) + desperdicio + rinde propios
     var carneIds=CARNES.map(function(c){return c.id;}); if(mapC['—'])carneIds.push('—');
     var byC=carneIds.map(function(cid){
       var m=mapC[cid]; if(!m)return'';
       var name=cid==='—'?'Sin especificar':carneName(cid);
       var subs=TAMANOS.map(function(t){return m.tam[t.id]?(esc(t.name)+' '+nf(m.tam[t.id])):'';}).filter(Boolean);
       if(m.tam['—'])subs.push('Sin tamaño '+nf(m.tam['—']));
-      return '<div class="stk"><div class="stk-h"><span class="stk-n">'+esc(name)+'</span><span class="stk-q">'+nf(m.tot)+'</span></div>'+(subs.length?'<div class="stk-sub">'+subs.join(' · ')+'</div>':'')+'</div>';
+      var rinde=(m.kg+m.desp)>0?(m.kg/(m.kg+m.desp)*100):0;
+      var rline=(m.desp>0)?'<div class="stk-rinde"><span class="w">Desperdicio '+nf(m.desp)+' kg</span><span class="r">Rinde '+pct1(rinde)+'</span></div>':'';
+      return '<div class="stk"><div class="stk-h"><span class="stk-n">'+esc(name)+'</span><span class="stk-q">'+nf(m.tot)+'</span></div>'+(subs.length?'<div class="stk-sub">'+subs.join(' · ')+'</div>':'')+rline+'</div>';
     }).filter(Boolean).join('');
-    // Producido por tamaño
+    // Por tamaño: producido
     var tamIds=TAMANOS.map(function(t){return t.id;}); if(mapT['—']!=null)tamIds.push('—');
     var byT=tamIds.map(function(tid){
       if(mapT[tid]==null)return'';
       var name=tid==='—'?'Sin tamaño':tamName(tid);
       return '<div class="stk"><div class="stk-h"><span class="stk-n">'+esc(name)+'</span><span class="stk-q">'+nf(mapT[tid])+'</span></div></div>';
     }).filter(Boolean).join('');
-    html+='<div class="section-lbl">Producido por proteína</div>'+byC+
+    sum.innerHTML='<div class="section-lbl">Por proteína · producido, desperdicio y rinde</div>'+byC+
           '<div class="section-lbl" style="margin-top:12px">Producido por tamaño</div>'+byT;
-    sum.innerHTML=html;
   }
   function renderHist(){
     var carne=$("fCarne").value, local=$("fLocal").value, persona=$("fPersona").value, rows=[];
@@ -949,6 +956,7 @@
           '<span class="badge prod">▲ Producción</span><span class="hcar">'+esc(carneName(o.carne))+'</span>'+
           (o.tam?'<span class="szt">'+esc(tamName(o.tam))+'</span>':'')+
           '<span class="hm" style="color:var(--good)">+'+nf(o.mila)+'</span>'+
+          '<button class="hedit" data-hedit="'+o.id+'" data-hk="prod" type="button" aria-label="Editar">✏️</button>'+
           '<button class="hdel" data-hdel="'+o.id+'" data-hk="prod" type="button">✕</button></div>'+
           '<div class="hmeta"><span>'+fmtDate(o.fecha)+'</span><span>'+nf(o.kg)+' kg de carne'+(o.desperdicio>0?' · desperdicio '+nf(o.desperdicio)+' kg · rinde '+pct1(rindePct(o.kg,o.desperdicio)):'')+'</span></div>'+
           (o.costo>0?'<div class="hcost">Costo '+money(o.costo)+' · '+money(o.mila>0?o.costo/o.mila:0)+' / milanesa</div>':'')+
@@ -957,6 +965,7 @@
         return '<div class="hitem"><div class="hh">'+
           '<span class="badge sal">▼ Salida</span><span class="hcar">'+esc(localName(o.local))+'</span>'+
           '<span class="hm" style="color:var(--crit)">−'+nf(o.mila)+'</span>'+
+          '<button class="hedit" data-hedit="'+o.id+'" data-hk="sal" type="button" aria-label="Editar">✏️</button>'+
           '<button class="hdel" data-hdel="'+o.id+'" data-hk="sal" type="button">✕</button></div>'+
           '<div class="hmeta"><span>'+fmtDate(o.fecha)+'</span><span>'+(o.carne?esc(carneName(o.carne)):"—")+(o.nota?" · "+esc(o.nota):"")+'</span></div>'+by+'</div>';
       }
@@ -1154,6 +1163,44 @@
   function resetConfirms(){
     Array.prototype.forEach.call(document.querySelectorAll(".confirm"),function(b){b.classList.remove("confirm");if(b.classList.contains("hdel"))b.textContent="✕";});
   }
+  function setMode(m){
+    mode=m;
+    Array.prototype.forEach.call($("modeSeg").children,function(x){x.classList.toggle("on",x.getAttribute("data-mode")===m);});
+    $("modeSeg").classList.toggle("salida",m==="sal");
+    $("paneProd").hidden=m!=="prod"; $("paneSal").hidden=m!=="sal";
+  }
+  function resetEdit(){
+    editProduccionId=null; editSalidaId=null;
+    if($("editBanner"))$("editBanner").hidden=true;
+    if($("doProd"))$("doProd").textContent="Registrar producción";
+    if($("doSal"))$("doSal").textContent="Registrar salida";
+  }
+  function editProduccion(id){
+    var p=producciones.filter(function(x){return x.id===id;})[0]; if(!p)return;
+    go("principal"); setMode("prod");
+    $("pFecha").value=p.fecha||todayISO();
+    refreshSelects();
+    $("pCarne").value=p.carne||""; $("pTam").value=p.tam||"";
+    $("pKg").value=p.kg||""; $("pMila").value=p.mila||""; $("pDesp").value=p.desperdicio||"";
+    draftItems=(p.items||[]).map(function(x){return {prodId:x[0],qty:x[1]};});
+    renderDraft(); updateDesp(); computeCost();
+    editProduccionId=id; editSalidaId=null;
+    $("doProd").textContent="Guardar cambios";
+    $("editBannerT").textContent="Editando una producción"; $("editBanner").hidden=false;
+    $("scr-principal").scrollTop=0;
+  }
+  function editSalida(id){
+    var s=salidas.filter(function(x){return x.id===id;})[0]; if(!s)return;
+    go("principal"); setMode("sal");
+    $("sFecha").value=s.fecha||todayISO();
+    refreshSelects();
+    $("sLocal").value=s.local||""; $("sCarne").value=s.carne||""; $("sTam").value=s.tam||"";
+    $("sMila").value=s.mila||""; $("sNota").value=s.nota||"";
+    editSalidaId=id; editProduccionId=null;
+    $("doSal").textContent="Guardar cambios";
+    $("editBannerT").textContent="Editando una salida"; $("editBanner").hidden=false;
+    $("scr-principal").scrollTop=0;
+  }
 
   // ---------- auth ----------
   var authMode="login";
@@ -1239,11 +1286,10 @@
     // mode toggle
     $("modeSeg").addEventListener("click",function(e){
       var b=e.target.closest("button[data-mode]"); if(!b)return;
-      mode=b.getAttribute("data-mode");
-      Array.prototype.forEach.call($("modeSeg").children,function(x){x.classList.toggle("on",x===b);});
-      $("modeSeg").classList.toggle("salida",mode==="sal");
-      $("paneProd").hidden=mode!=="prod"; $("paneSal").hidden=mode!=="sal";
+      if(editProduccionId||editSalidaId) resetEdit();
+      setMode(b.getAttribute("data-mode"));
     });
+    $("editCancel").addEventListener("click",function(){resetEdit();});
     $("pCarne").addEventListener("change",function(){loadReceta(this.value);});
     $("pMila").addEventListener("input",computeCost);
     $("pKg").addEventListener("input",function(){computeCost();updateDesp();});
@@ -1265,6 +1311,15 @@
         kg:num($("pKg").value),mila:mila,items:usados.map(function(x){return [x.prodId,x.qty];}),costo:costo,desperdicio:desp};
       $("doProd").disabled=true;
       withSave(async function(){
+        if(editProduccionId){
+          var eid=editProduccionId;
+          await dbUpdate("producciones",eid,row);
+          var i=producciones.map(function(x){return x.id;}).indexOf(eid);
+          if(i>=0)producciones[i]=Object.assign({},producciones[i],{fecha:row.fecha,carne:row.carne_id,tam:row.tam_id,kg:Number(row.kg),mila:Number(row.mila),items:row.items,costo:costo,desperdicio:desp});
+          refreshStock(); resetEdit();
+          $("pMila").value="";$("pKg").value="";$("pDesp").value="";draftItems=[];renderDraft();computeCost();updateDesp();
+          toast('<span class="k">✓</span> Cambios guardados'); go("historial"); return;
+        }
         var d=await dbInsert("producciones",row);
         producciones.unshift({id:d.id,fecha:d.fecha,carne:d.carne_id,tam:d.tam_id,kg:Number(d.kg),mila:Number(d.mila),items:Array.isArray(d.items)?d.items:[],costo:Number(d.costo)||costo,desperdicio:d.desperdicio!=null?Number(d.desperdicio):desp,by:d.creado_por,at:d.created_at});
         refreshStock();
@@ -1284,6 +1339,15 @@
       var row={fecha:$("sFecha").value||todayISO(),local_id:$("sLocal").value,carne_id:$("sCarne").value,tam_id:$("sTam").value,mila:mila,nota:$("sNota").value.trim()};
       $("doSal").disabled=true;
       withSave(async function(){
+        if(editSalidaId){
+          var eid=editSalidaId;
+          await dbUpdate("salidas",eid,row);
+          var i=salidas.map(function(x){return x.id;}).indexOf(eid);
+          if(i>=0)salidas[i]=Object.assign({},salidas[i],{fecha:row.fecha,local:row.local_id,carne:row.carne_id,tam:row.tam_id,mila:Number(row.mila),nota:row.nota});
+          refreshStock(); resetEdit();
+          $("sMila").value="";$("sNota").value="";
+          toast('<span class="k">✓</span> Cambios guardados'); go("historial"); return;
+        }
         var d=await dbInsert("salidas",row);
         salidas.unshift({id:d.id,fecha:d.fecha,local:d.local_id,carne:d.carne_id,tam:d.tam_id,mila:Number(d.mila),nota:d.nota||"",by:d.creado_por,at:d.created_at});
         refreshStock();
@@ -1304,6 +1368,8 @@
     $("fLocal").addEventListener("change",renderHist);
     $("fPersona").addEventListener("change",renderHist);
     $("histList").addEventListener("click",function(e){
+      var ed=e.target.closest("button[data-hedit]");
+      if(ed){var eid=ed.getAttribute("data-hedit"),ek=ed.getAttribute("data-hk"); if(ek==="prod")editProduccion(eid); else editSalida(eid); return;}
       var b=e.target.closest("button[data-hdel]"); if(!b)return;
       var id=b.getAttribute("data-hdel"), k=b.getAttribute("data-hk");
       if(b.classList.contains("confirm")){
