@@ -238,9 +238,9 @@
   .litem .pz{flex:0 0 auto;display:flex;align-items:center;gap:3px;color:var(--ink-3);font-size:13px;}
   .litem .pz input{width:78px;padding:7px 8px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;}
   .addrow.prodrow{flex-wrap:wrap;}
-  .addrow.prodrow input#newProd{flex:1 1 100%;}
+  .addrow.prodrow input[type=text]{flex:1 1 100%;}
   .addrow.prodrow select{flex:0 0 70px;}
-  .addrow.prodrow input#newProdP{flex:1 1 auto;min-width:0;text-align:right;}
+  .addrow.prodrow input[type=number]{flex:1 1 auto;min-width:0;text-align:right;}
   .hitem .hcost{font-size:12px;color:var(--accent-ink);font-weight:600;margin-top:6px;}
 
   /* toast */
@@ -340,7 +340,7 @@
       </div>
 
       <div class="costbox" id="costBox">
-        <div><div class="cl">Costo por milanesa</div><div class="per">Total insumos: <b id="costTotal">$0,00</b></div></div>
+        <div><div class="cl">Costo por milanesa</div><div class="per">Total (carne + insumos): <b id="costTotal">$0,00</b></div></div>
         <div class="cv" id="costPer">$0,00</div>
       </div>
 
@@ -412,8 +412,9 @@
     <div class="cfg-card">
       <h3>🥩 Carnes / tipos de milanesa</h3>
       <div class="rowlist" id="cfgCarnes"></div>
-      <div class="addrow">
+      <div class="addrow prodrow">
         <input type="text" id="newCarne" placeholder="ej: Nalga, Pollo, Cerdo…" maxlength="40">
+        <input type="number" id="newCarneP" placeholder="$ precio x kg" min="0" step="0.01" inputmode="decimal">
         <button type="button" data-add="carne">+</button>
       </div>
     </div>
@@ -562,7 +563,7 @@
       sb.from("profiles").select("*")
     ]);
     for(var i=0;i<res.length;i++){ if(res[i].error) throw res[i].error; }
-    CARNES=(res[0].data||[]).map(function(x){return {id:x.id,name:x.name,by:x.creado_por,at:x.created_at};});
+    CARNES=(res[0].data||[]).map(function(x){return {id:x.id,name:x.name,precio:x.precio!=null?Number(x.precio):0,by:x.creado_por,at:x.created_at};});
     RECETAS={}; (res[0].data||[]).forEach(function(x){RECETAS[x.id]=Array.isArray(x.receta)?x.receta:[];});
     TAMANOS=(res[1].data||[]).map(function(x){return {id:x.id,name:x.name,by:x.creado_por,at:x.created_at};});
     LOCALES=(res[2].data||[]).map(function(x){return {id:x.id,name:x.name,by:x.creado_por,at:x.created_at};});
@@ -620,10 +621,10 @@
     USERS={}; PROFILES.forEach(function(p){USERS[p.id]=p.nombre;});
     var d20="2026-08-20T10:00:00", d21="2026-08-21T09:15:00";
     CARNES=[
-      {id:"c1",name:"Nalga (vacuna)",by:"u-osva",at:d20},
-      {id:"c2",name:"Pollo",by:"u-osva",at:d20},
-      {id:"c3",name:"Cerdo",by:"u-juan",at:d21},
-      {id:"c4",name:"Soja / veggie",by:"u-caro",at:d21}
+      {id:"c1",name:"Nalga (vacuna)",precio:8000,by:"u-osva",at:d20},
+      {id:"c2",name:"Pollo",precio:5000,by:"u-osva",at:d20},
+      {id:"c3",name:"Cerdo",precio:6000,by:"u-juan",at:d21},
+      {id:"c4",name:"Soja / veggie",precio:3000,by:"u-caro",at:d21}
     ];
     RECETAS={c1:[["p1",500],["p2",6],["p3",20],["p4",15]],c2:[["p1",450],["p2",5],["p4",12]],c3:[["p1",500],["p2",6],["p5",10]],c4:[["p1",400],["p3",15]]};
     TAMANOS=[{id:"t1",name:"Milanesa",by:"u-osva",at:d20},{id:"t2",name:"Pizzanesa",by:"u-osva",at:d20},{id:"t3",name:"Almuerzo",by:"u-juan",at:d21}];
@@ -636,9 +637,9 @@
       {id:"p5",name:"Ajo",unit:"g",precio:2,by:"u-caro",at:d21}
     ];
     producciones=[
-      {id:"pr1",fecha:"2026-08-23",carne:"c1",tam:"t1",kg:10,mila:60,items:[["p1",500],["p2",6],["p3",20]],costo:1150,by:"u-osva",at:"2026-08-23T14:20:00"},
-      {id:"pr2",fecha:"2026-08-23",carne:"c2",tam:"t2",kg:8,mila:40,items:[["p1",450],["p2",5]],costo:990,by:"u-juan",at:"2026-08-23T11:05:00"},
-      {id:"pr3",fecha:"2026-08-22",carne:"c3",tam:"t1",kg:6,mila:36,items:[["p1",500]],costo:600,by:"u-caro",at:"2026-08-22T09:40:00"}
+      {id:"pr1",fecha:"2026-08-23",carne:"c1",tam:"t1",kg:10,mila:60,items:[["p1",500],["p2",6],["p3",20]],costo:81150,by:"u-osva",at:"2026-08-23T14:20:00"},
+      {id:"pr2",fecha:"2026-08-23",carne:"c2",tam:"t2",kg:8,mila:40,items:[["p1",450],["p2",5]],costo:40990,by:"u-juan",at:"2026-08-23T11:05:00"},
+      {id:"pr3",fecha:"2026-08-22",carne:"c3",tam:"t1",kg:6,mila:36,items:[["p1",500]],costo:36600,by:"u-caro",at:"2026-08-22T09:40:00"}
     ];
     salidas=[
       {id:"s1",fecha:"2026-08-23",local:"l1",carne:"c1",mila:24,nota:"retiró Juan",by:"u-osva",at:"2026-08-23T15:10:00"},
@@ -735,6 +736,8 @@
     if(!$("costTotal"))return;
     var total=0;
     draftItems.forEach(function(it){var p=prod(it.prodId);if(p&&p.precio)total+=(Number(it.qty)||0)*Number(p.precio);});
+    var c=CARNES.filter(function(x){return x.id===$("pCarne").value;})[0];
+    if(c&&c.precio) total+=num($("pKg").value)*Number(c.precio);
     var mila=num($("pMila").value);
     $("costTotal").textContent=money(total);
     $("costPer").textContent=mila>0?money(total/mila):money(0);
@@ -838,9 +841,19 @@
         '<button class="lx" data-delp="'+p.id+'" type="button">&times;</button></div>';
     }).join("");
   }
+  function renderCarnes(){
+    var box=$("cfgCarnes");
+    if(!CARNES.length){box.innerHTML='<div style="font-size:12px;color:var(--ink-3)">Sin carnes cargadas.</div>';return;}
+    box.innerHTML=CARNES.map(function(c){
+      return '<div class="litem"><div class="col"><span class="ln">'+esc(c.name)+'</span>'+metaLine(c)+'</div>'+
+        '<span class="lu">/kg</span>'+
+        '<span class="pz">$<input type="number" min="0" step="0.01" inputmode="decimal" data-pricec="'+c.id+'" value="'+(c.precio!=null?c.precio:0)+'" aria-label="precio por kg de '+esc(c.name)+'"></span>'+
+        '<button class="lx" data-delc="'+c.id+'" type="button">&times;</button></div>';
+    }).join("");
+  }
   function renderConfig(){
     renderPersonas();
-    $("cfgCarnes").innerHTML=cfgRows(CARNES,"delc",false);
+    renderCarnes();
     $("cfgTam").innerHTML=cfgRows(TAMANOS,"delt",false);
     $("cfgLocales").innerHTML=cfgRows(LOCALES,"dell",false);
     renderProductos();
@@ -959,6 +972,7 @@
     });
     $("pCarne").addEventListener("change",function(){loadReceta(this.value);});
     $("pMila").addEventListener("input",computeCost);
+    $("pKg").addEventListener("input",computeCost);
     $("addProdBtn").addEventListener("click",function(){$("catalog").classList.toggle("open");});
 
     // register produccion
@@ -968,6 +982,8 @@
       if(mila<=0){toast("Poné cuántas milanesas salieron");$("pMila").focus();return;}
       var usados=draftItems.filter(function(x){return x.qty>0;});
       var costo=0; usados.forEach(function(x){var p=prod(x.prodId);if(p&&p.precio)costo+=(Number(x.qty)||0)*Number(p.precio);});
+      var cSel=CARNES.filter(function(x){return x.id===$("pCarne").value;})[0];
+      if(cSel&&cSel.precio) costo+=num($("pKg").value)*Number(cSel.precio);
       costo=r2(costo);
       var row={fecha:$("pFecha").value||todayISO(),carne_id:$("pCarne").value||null,tam_id:$("pTam").value||null,
         kg:num($("pKg").value),mila:mila,items:usados.map(function(x){return [x.prodId,x.qty];}),costo:costo};
@@ -1031,11 +1047,18 @@
       withSave(async function(){ await dbUpdate("productos",id,{precio:val}); });
       computeCost();
     });
+    // editar precio (por kg) de una carne
+    $("cfgCarnes").addEventListener("change",function(e){
+      var t=e.target, id=t.getAttribute&&t.getAttribute("data-pricec"); if(!id)return;
+      var val=parseNum(t.value); var c=CARNES.filter(function(x){return x.id===id;})[0]; if(c)c.precio=val;
+      withSave(async function(){ await dbUpdate("carnes",id,{precio:val}); });
+      computeCost();
+    });
 
     // config add / delete
     document.addEventListener("click",function(e){
       var t=e.target, add=t.getAttribute&&t.getAttribute("data-add");
-      if(add==="carne"){var v=$("newCarne").value.trim();if(v)withSave(async function(){var d=await dbInsert("carnes",{name:v,receta:[]});CARNES.push({id:d.id,name:d.name,by:d.creado_por,at:d.created_at});RECETAS[d.id]=[];$("newCarne").value="";refreshSelects();renderConfig();toast("Carne agregada");});return;}
+      if(add==="carne"){var v=$("newCarne").value.trim();var cz=parseNum($("newCarneP").value);if(v)withSave(async function(){var d=await dbInsert("carnes",{name:v,receta:[],precio:cz});CARNES.push({id:d.id,name:d.name,precio:Number(d.precio)||cz,by:d.creado_por,at:d.created_at});RECETAS[d.id]=[];$("newCarne").value="";$("newCarneP").value="";refreshSelects();renderConfig();toast("Carne agregada");});return;}
       if(add==="tam"){var vt=$("newTam").value.trim();if(vt)withSave(async function(){var d=await dbInsert("tamanos",{name:vt});TAMANOS.push({id:d.id,name:d.name,by:d.creado_por,at:d.created_at});$("newTam").value="";refreshSelects();renderConfig();toast("Tamaño agregado");});return;}
       if(add==="local"){var v2=$("newLocal").value.trim();if(v2)withSave(async function(){var d=await dbInsert("locales",{name:v2});LOCALES.push({id:d.id,name:d.name,by:d.creado_por,at:d.created_at});$("newLocal").value="";refreshSelects();renderConfig();toast("Local agregado");});return;}
       if(add==="prod"){var v3=$("newProd").value.trim();var pz3=parseNum($("newProdP").value);if(v3)withSave(async function(){var d=await dbInsert("productos",{name:v3,unit:$("newProdU").value,precio:pz3});PRODUCTOS.push({id:d.id,name:d.name,unit:d.unit,precio:Number(d.precio)||pz3,by:d.creado_por,at:d.created_at});$("newProd").value="";$("newProdP").value="";renderConfig();renderCatalog();computeCost();toast("Producto agregado");});return;}
