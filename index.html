@@ -237,6 +237,11 @@
     font-variant-numeric:tabular-nums;white-space:nowrap;}
   .litem .pz{flex:0 0 auto;display:flex;align-items:center;gap:3px;color:var(--ink-3);font-size:13px;}
   .litem .pz input{width:78px;padding:7px 8px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;}
+  .litem .pz input[readonly]{border-color:var(--line);background:var(--sunk);color:var(--ink-2);cursor:default;}
+  .litem .pz input.on{border-color:var(--accent);background:var(--card);color:var(--ink);box-shadow:0 0 0 3px var(--accent-soft);}
+  .litem .editp{color:var(--accent-ink);font-size:15px;}
+  .litem .editp:hover{background:var(--accent-soft);}
+  .litem .editp.editing{color:#fff;background:var(--good);}
   .addrow.prodrow{flex-wrap:wrap;}
   .addrow.prodrow input[type=text]{flex:1 1 100%;}
   .addrow.prodrow select{flex:0 0 70px;}
@@ -835,20 +840,24 @@
     var box=$("cfgProds");
     if(!PRODUCTOS.length){box.innerHTML='<div style="font-size:12px;color:var(--ink-3)">Sin productos cargados.</div>';return;}
     box.innerHTML=PRODUCTOS.map(function(p){
+      var key="productos|"+p.id;
       return '<div class="litem"><div class="col"><span class="ln">'+esc(p.name)+'</span>'+metaLine(p)+'</div>'+
         '<span class="lu">'+esc(p.unit)+'</span>'+
-        '<span class="pz">$<input type="number" min="0" step="0.01" inputmode="decimal" data-price="'+p.id+'" value="'+(p.precio!=null?p.precio:0)+'" aria-label="precio de '+esc(p.name)+'"></span>'+
-        '<button class="lx" data-delp="'+p.id+'" type="button">&times;</button></div>';
+        '<span class="pz">$<input type="number" min="0" step="0.01" inputmode="decimal" data-pin="'+key+'" value="'+(p.precio!=null?p.precio:0)+'" readonly aria-label="precio de '+esc(p.name)+'"></span>'+
+        '<button class="lx editp" data-edit="'+key+'" type="button" aria-label="Editar precio">✏️</button>'+
+        '<button class="lx" data-delp="'+p.id+'" type="button" aria-label="Eliminar">&times;</button></div>';
     }).join("");
   }
   function renderCarnes(){
     var box=$("cfgCarnes");
     if(!CARNES.length){box.innerHTML='<div style="font-size:12px;color:var(--ink-3)">Sin carnes cargadas.</div>';return;}
     box.innerHTML=CARNES.map(function(c){
+      var key="carnes|"+c.id;
       return '<div class="litem"><div class="col"><span class="ln">'+esc(c.name)+'</span>'+metaLine(c)+'</div>'+
         '<span class="lu">/kg</span>'+
-        '<span class="pz">$<input type="number" min="0" step="0.01" inputmode="decimal" data-pricec="'+c.id+'" value="'+(c.precio!=null?c.precio:0)+'" aria-label="precio por kg de '+esc(c.name)+'"></span>'+
-        '<button class="lx" data-delc="'+c.id+'" type="button">&times;</button></div>';
+        '<span class="pz">$<input type="number" min="0" step="0.01" inputmode="decimal" data-pin="'+key+'" value="'+(c.precio!=null?c.precio:0)+'" readonly aria-label="precio por kg de '+esc(c.name)+'"></span>'+
+        '<button class="lx editp" data-edit="'+key+'" type="button" aria-label="Editar precio">✏️</button>'+
+        '<button class="lx" data-delc="'+c.id+'" type="button" aria-label="Eliminar">&times;</button></div>';
     }).join("");
   }
   function renderConfig(){
@@ -1040,19 +1049,31 @@
       }
     });
 
-    // editar precio de un producto
-    $("cfgProds").addEventListener("change",function(e){
-      var t=e.target, id=t.getAttribute&&t.getAttribute("data-price"); if(!id)return;
-      var val=parseNum(t.value); var p=prod(id); if(p)p.precio=val;
-      withSave(async function(){ await dbUpdate("productos",id,{precio:val}); });
-      computeCost();
-    });
-    // editar precio (por kg) de una carne
-    $("cfgCarnes").addEventListener("change",function(e){
-      var t=e.target, id=t.getAttribute&&t.getAttribute("data-pricec"); if(!id)return;
-      var val=parseNum(t.value); var c=CARNES.filter(function(x){return x.id===id;})[0]; if(c)c.precio=val;
-      withSave(async function(){ await dbUpdate("carnes",id,{precio:val}); });
-      computeCost();
+    // editar precio: ✏️ desbloquea, ✓ confirma y fija (hasta volver a tocar el lápiz)
+    function onEditPrice(btn){
+      var key=btn.getAttribute("data-edit"); if(!key)return;
+      var parts=key.split("|"), table=parts[0], id=parts[1];
+      var input=document.querySelector('[data-pin="'+key+'"]'); if(!input)return;
+      if(!btn.classList.contains("editing")){
+        input.readOnly=false; input.classList.add("on");
+        btn.classList.add("editing"); btn.textContent="✓"; btn.setAttribute("aria-label","Confirmar precio");
+        input.focus(); input.select();
+      } else {
+        var val=parseNum(input.value);
+        if(table==="carnes"){var c=CARNES.filter(function(x){return x.id===id;})[0]; if(c)c.precio=val;}
+        else {var p=prod(id); if(p)p.precio=val;}
+        input.value=val; input.readOnly=true; input.classList.remove("on");
+        btn.classList.remove("editing"); btn.textContent="✏️"; btn.setAttribute("aria-label","Editar precio");
+        withSave(async function(){ await dbUpdate(table,id,{precio:val}); });
+        computeCost(); toast('<span class="k">✓</span> Precio actualizado');
+      }
+    }
+    document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("button[data-edit]"); if(b)onEditPrice(b);});
+    document.addEventListener("keydown",function(e){
+      if(e.key!=="Enter")return;
+      var inp=e.target, key=inp&&inp.getAttribute&&inp.getAttribute("data-pin"); if(!key)return;
+      var btn=document.querySelector('button[data-edit="'+key+'"]');
+      if(btn&&btn.classList.contains("editing")){e.preventDefault();onEditPrice(btn);}
     });
 
     // config add / delete
