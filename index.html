@@ -139,10 +139,14 @@
   .addbtn{width:100%;font:inherit;font-weight:600;font-size:13.5px;color:var(--accent-ink);background:var(--accent-soft);
     border:1px dashed var(--accent);border-radius:11px;padding:10px;cursor:pointer;}
   .catalog{display:none;flex-wrap:wrap;gap:7px;margin-top:10px;padding:11px;background:var(--sunk);border:1px solid var(--line);border-radius:11px;}
-  .catalog.open{display:flex;}
+  .catalog.open{display:flex;flex-direction:column;gap:10px;}
+  .catalog .catwrap{display:flex;flex-wrap:wrap;gap:7px;}
   .catalog .ct{font:inherit;font-size:13px;font-weight:600;color:var(--ink);background:var(--card);border:1px solid var(--line-strong);
     border-radius:999px;padding:6px 12px;cursor:pointer;}
   .catalog .ct:hover{border-color:var(--accent);color:var(--accent-ink);}
+  .catalog .ct.on{background:var(--accent);color:#FFF7EA;border-color:var(--accent);}
+  .catalog .catadd{width:100%;font:inherit;font-weight:700;font-size:13.5px;color:#FFF7EA;background:var(--accent);border:none;border-radius:10px;padding:11px;cursor:pointer;}
+  .catalog .catadd:disabled{opacity:.55;cursor:default;background:var(--ink-3);}
   .catalog .none{font-size:12px;color:var(--ink-3);font-style:italic;}
 
   .btn{width:100%;font:inherit;font-weight:800;font-size:15px;font-family:"Bricolage Grotesque",sans-serif;
@@ -181,6 +185,18 @@
   .hitem .items b{color:var(--ink);}
   .hempty{text-align:center;color:var(--ink-3);font-size:14px;padding:40px 16px;}
   .hempty .ic{font-size:30px;display:block;margin-bottom:10px;}
+
+  /* ---- stock ---- */
+  .stocktop{background:linear-gradient(135deg,var(--accent-ink),var(--accent));color:#FFF7EA;border-radius:var(--radius);padding:18px;text-align:center;margin-bottom:16px;box-shadow:var(--shadow);}
+  .stocktop-l{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.92;}
+  .stocktop-n{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:46px;line-height:1.05;font-variant-numeric:tabular-nums;}
+  .stocktop-u{font-size:12px;opacity:.92;}
+  .stk{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:11px 14px;margin-bottom:8px;}
+  .stk-h{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .stk-n{font-weight:700;font-size:14.5px;}
+  .stk-q{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;font-variant-numeric:tabular-nums;color:var(--good);}
+  .stk-q.zero{color:var(--ink-3);}
+  .stk-sub{font-size:12px;color:var(--ink-3);margin-top:5px;}
 
   /* ---- config ---- */
   .cfg-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px;margin-bottom:14px;}
@@ -317,10 +333,6 @@
         <h1>Control de Milanesas</h1>
         <div class="sub"><span id="screenName">Principal</span><span id="saveState"></span></div>
       </div>
-      <div class="stockchip">
-        <div class="n" id="stockN">0</div>
-        <div class="l">en stock</div>
-      </div>
     </div>
   </div>
 
@@ -396,9 +408,15 @@
           <label for="sLocal">Local de destino</label>
           <select id="sLocal"></select>
         </div>
-        <div class="field">
-          <label for="sCarne">Tipo de milanesa <span class="u">(opcional)</span></label>
-          <select id="sCarne"></select>
+        <div class="field row">
+          <div>
+            <label for="sCarne">Tipo de milanesa</label>
+            <select id="sCarne"></select>
+          </div>
+          <div>
+            <label for="sTam">Tamaño</label>
+            <select id="sTam"></select>
+          </div>
         </div>
         <div class="field">
           <label for="sNota">Nota <span class="u">(opcional)</span></label>
@@ -407,6 +425,15 @@
       </div>
       <button class="btn crit" type="button" id="doSal">Registrar salida</button>
     </div>
+  </div>
+
+  <!-- ============ STOCK ============ -->
+  <div class="screen" id="scr-stock" hidden>
+    <div class="stitle" style="margin-bottom:14px">Stock</div>
+    <div class="section-lbl">Por proteína</div>
+    <div id="stockByCarne"></div>
+    <div class="section-lbl" style="margin-top:14px">Por tamaño</div>
+    <div id="stockByTam"></div>
   </div>
 
   <!-- ============ HISTORIAL ============ -->
@@ -494,6 +521,10 @@
       <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
       <span>Principal</span>
     </button>
+    <button data-s="stock" type="button">
+      <svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
+      <span>Stock</span>
+    </button>
     <button data-s="historial" type="button">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>
       <span>Historial</span>
@@ -565,7 +596,7 @@
   var PROFILES=[], USERS={}, currentUserId=null;
   var STEP={g:50,ml:50,kg:0.5,u:1}, DEF={g:100,ml:100,kg:1,u:1};
   var draftItems=[], mode="prod", fTipo="todo", fDesde="", fHasta="", fLocal="", editProdId=null;
-  var editMode="peso", editUnit="g", efFactors=["",""];
+  var editMode="peso", editUnit="g", efFactors=["",""], catSel=[];
   var DEMO=false, demoSeq=0, pendingName="";
 
   function carneName(id){var c=CARNES.filter(function(x){return x.id===id;})[0];return c?c.name:"—";}
@@ -620,7 +651,7 @@
       return {id:x.id,name:x.name,unit:x.unit,precio_pack:pack,rinde:rinde,meta:meta,precio:precio,by:x.creado_por,at:x.created_at};
     });
     producciones=(res[4].data||[]).map(function(x){return {id:x.id,fecha:x.fecha,carne:x.carne_id,tam:x.tam_id,kg:Number(x.kg),mila:Number(x.mila),items:Array.isArray(x.items)?x.items:[],costo:x.costo!=null?Number(x.costo):0,by:x.creado_por,at:x.created_at};});
-    salidas=(res[5].data||[]).map(function(x){return {id:x.id,fecha:x.fecha,local:x.local_id,carne:x.carne_id,mila:Number(x.mila),nota:x.nota||"",by:x.creado_por,at:x.created_at};});
+    salidas=(res[5].data||[]).map(function(x){return {id:x.id,fecha:x.fecha,local:x.local_id,carne:x.carne_id,tam:x.tam_id,mila:Number(x.mila),nota:x.nota||"",by:x.creado_por,at:x.created_at};});
     PROFILES=(res[6].data||[]).map(function(x){return {id:x.id,nombre:x.nombre||x.email||"—",email:x.email||""};});
     USERS={}; PROFILES.forEach(function(p){USERS[p.id]=p.nombre;});
   }
@@ -677,7 +708,7 @@
       {id:"c3",name:"Cerdo",precio:6000,by:"u-juan",at:d21},
       {id:"c4",name:"Soja / veggie",precio:3000,by:"u-caro",at:d21}
     ];
-    RECETAS={c1:[["p1",500],["p2",6],["p3",20],["p4",15]],c2:[["p1",450],["p2",5],["p4",12]],c3:[["p1",500],["p2",6],["p5",10]],c4:[["p1",400],["p3",15]]};
+    RECETAS={};
     TAMANOS=[{id:"t1",name:"Milanesa",by:"u-osva",at:d20},{id:"t2",name:"Pizzanesa",by:"u-osva",at:d20},{id:"t3",name:"Almuerzo",by:"u-juan",at:d21}];
     LOCALES=[{id:"l1",name:"Local Centro",by:"u-osva",at:d20},{id:"l2",name:"Local Norte",by:"u-juan",at:d21},{id:"l3",name:"Sucursal Palermo",by:"u-caro",at:d21}];
     PRODUCTOS=[
@@ -693,8 +724,8 @@
       {id:"pr3",fecha:"2026-08-22",carne:"c3",tam:"t1",kg:6,mila:36,items:[["p1",500]],costo:36600,by:"u-caro",at:"2026-08-22T09:40:00"}
     ];
     salidas=[
-      {id:"s1",fecha:"2026-08-23",local:"l1",carne:"c1",mila:24,nota:"retiró Juan",by:"u-osva",at:"2026-08-23T15:10:00"},
-      {id:"s2",fecha:"2026-08-22",local:"l2",carne:"c2",mila:20,nota:"",by:"u-juan",at:"2026-08-22T12:30:00"}
+      {id:"s1",fecha:"2026-08-23",local:"l1",carne:"c1",tam:"t1",mila:24,nota:"retiró Juan",by:"u-osva",at:"2026-08-23T15:10:00"},
+      {id:"s2",fecha:"2026-08-22",local:"l2",carne:"c2",tam:"t2",mila:20,nota:"",by:"u-juan",at:"2026-08-22T12:30:00"}
     ];
     currentUserId="u-osva";
   }
@@ -723,7 +754,7 @@
   // ---------- stock ----------
   function totalProd(){return producciones.reduce(function(a,p){return a+(Number(p.mila)||0);},0);}
   function totalSal(){return salidas.reduce(function(a,s){return a+(Number(s.mila)||0);},0);}
-  function refreshStock(){$("stockN").textContent=nf(totalProd()-totalSal());}
+  function refreshStock(){var n=$("stockN"); if(n)n.textContent=nf(totalProd()-totalSal()); if($("scr-stock")&&!$("scr-stock").hidden)renderStock();}
 
   // ---------- selects ----------
   function fillSelect(sel,list,firstOpt){
@@ -737,7 +768,8 @@
     fillSelect($("pCarne"),CARNES,CARNES.length?null:"— agregá una carne —");
     fillSelect($("pTam"),TAMANOS,TAMANOS.length?null:"— agregá un tamaño —");
     fillSelect($("sLocal"),LOCALES,LOCALES.length?null:"— agregá un local —");
-    fillSelect($("sCarne"),CARNES,"Todas / sin especificar");
+    fillSelect($("sTam"),TAMANOS,TAMANOS.length?null:"— agregá un tamaño —");
+    fillSelect($("sCarne"),CARNES,CARNES.length?null:"— agregá una carne —");
     fillSelect($("fCarne"),CARNES,"Todas las carnes");
     fillSelect($("fLocal"),LOCALES,"Todos los locales");
     fillSelect($("fPersona"),PROFILES.map(function(p){return {id:p.id,name:p.nombre};}),"Todas las personas");
@@ -745,11 +777,10 @@
 
   // ---------- draft (productos utilizados) ----------
   function loadReceta(carneId){
-    // Cargar TODOS los productos ya agregados. Si la carne tiene receta,
-    // se precarga la cantidad; el resto queda en 0 (no se guardan los 0).
-    var r=RECETAS[carneId]||[], qtyById={};
-    r.forEach(function(x){qtyById[x[0]]=x[1];});
-    draftItems=PRODUCTOS.map(function(p){return {prodId:p.id, qty:(qtyById[p.id]!=null?qtyById[p.id]:0)};});
+    // Arranca vacío: vos vas sumando los productos con "+ Agregar producto".
+    // Si la carne tuviera una receta fija, se precarga; si no, queda en blanco.
+    var r=RECETAS[carneId]||[];
+    draftItems=r.map(function(x){return {prodId:x[0],qty:x[1]};});
     renderDraft();
   }
   function renderDraft(){
@@ -797,12 +828,25 @@
     var cat=$("catalog"); var used=draftItems.map(function(x){return x.prodId;});
     var avail=PRODUCTOS.filter(function(p){return used.indexOf(p.id)<0;});
     cat.innerHTML="";
-    if(!avail.length){var n=el("span","none");n.textContent="No hay más productos. Agregá otros en Configuración.";cat.appendChild(n);return;}
+    if(!avail.length){var n=el("span","none");n.textContent="No hay más productos. Agregá otros en Configuración.";cat.appendChild(n);catSel=[];return;}
+    catSel=catSel.filter(function(id){return avail.some(function(p){return p.id===id;});});
+    var wrap=el("div","catwrap");
     avail.forEach(function(p){
-      var b=el("button","ct");b.type="button";b.textContent="+ "+p.name;
-      b.onclick=function(){draftItems.push({prodId:p.id,qty:DEF[p.unit]||1});cat.classList.remove("open");renderDraft();};
-      cat.appendChild(b);
+      var on=catSel.indexOf(p.id)>=0;
+      var b=el("button","ct"+(on?" on":""));b.type="button";b.textContent=(on?"✓ ":"+ ")+p.name;
+      b.onclick=function(){var i=catSel.indexOf(p.id);if(i>=0)catSel.splice(i,1);else catSel.push(p.id);renderCatalog();};
+      wrap.appendChild(b);
     });
+    cat.appendChild(wrap);
+    var foot=el("div","catfoot");
+    var addbtn=el("button","catadd");addbtn.type="button";
+    addbtn.textContent=catSel.length?("Agregar "+catSel.length+(catSel.length===1?" producto":" productos")):"Elegí uno o más productos";
+    addbtn.disabled=!catSel.length;
+    addbtn.onclick=function(){
+      catSel.forEach(function(id){var p=prod(id);if(p)draftItems.push({prodId:id,qty:DEF[p.unit]||1});});
+      catSel=[]; cat.classList.remove("open"); renderDraft();
+    };
+    foot.appendChild(addbtn); cat.appendChild(foot);
   }
 
   // ---------- toast ----------
@@ -1002,16 +1046,44 @@
   }
 
   // ---------- navigation ----------
-  var SCREENS={principal:"Principal",historial:"Historial",config:"Configuración"};
+  var SCREENS={principal:"Principal",stock:"Stock",historial:"Historial",config:"Configuración"};
   function go(s){
     $("scr-principal").hidden=s!=="principal";
+    $("scr-stock").hidden=s!=="stock";
     $("scr-historial").hidden=s!=="historial";
     $("scr-config").hidden=s!=="config";
     $("screenName").textContent=SCREENS[s];
     Array.prototype.forEach.call($("nav").children,function(b){b.classList.toggle("on",b.getAttribute("data-s")===s);});
+    if(s==="stock")renderStock();
     if(s==="historial"){updateHistFilters();renderHist();}
     if(s==="config")renderConfig();
     $("scr-"+s).scrollTop=0;
+  }
+  function renderStock(){
+    var map={};
+    function add(cid,tid,q){cid=cid||'—';tid=tid||'—';if(!map[cid])map[cid]={tot:0,tam:{}};map[cid].tot+=q;map[cid].tam[tid]=(map[cid].tam[tid]||0)+q;}
+    producciones.forEach(function(p){add(p.carne,p.tam,Number(p.mila)||0);});
+    salidas.forEach(function(s){add(s.carne,s.tam,-(Number(s.mila)||0));});
+    if($("stockTotal")) $("stockTotal").textContent=nf(totalProd()-totalSal());
+    var carneIds=CARNES.map(function(c){return c.id;}); if(map['—'])carneIds.push('—');
+    var htmlC=carneIds.map(function(cid){
+      var m=map[cid]; if(!m)return'';
+      var name=cid==='—'?'Sin especificar':carneName(cid);
+      var subs=TAMANOS.map(function(t){return m.tam[t.id]?(esc(t.name)+' '+nf(m.tam[t.id])):'';}).filter(Boolean);
+      if(m.tam['—']) subs.push('Sin tamaño '+nf(m.tam['—']));
+      return '<div class="stk"><div class="stk-h"><span class="stk-n">'+esc(name)+'</span><span class="stk-q'+(m.tot<=0?' zero':'')+'">'+nf(m.tot)+'</span></div>'+(subs.length?'<div class="stk-sub">'+subs.join(' · ')+'</div>':'')+'</div>';
+    }).filter(Boolean).join('');
+    $("stockByCarne").innerHTML=htmlC||'<div class="hempty">Todavía no hay stock.</div>';
+    var byT={};
+    producciones.forEach(function(p){var t=p.tam||'—';byT[t]=(byT[t]||0)+(Number(p.mila)||0);});
+    salidas.forEach(function(s){var t=s.tam||'—';byT[t]=(byT[t]||0)-(Number(s.mila)||0);});
+    var tamIds=TAMANOS.map(function(t){return t.id;}); if(byT['—']!=null)tamIds.push('—');
+    var htmlT=tamIds.map(function(tid){
+      if(byT[tid]==null)return'';
+      var name=tid==='—'?'Sin tamaño':tamName(tid);
+      return '<div class="stk"><div class="stk-h"><span class="stk-n">'+esc(name)+'</span><span class="stk-q'+(byT[tid]<=0?' zero':'')+'">'+nf(byT[tid])+'</span></div></div>';
+    }).filter(Boolean).join('');
+    $("stockByTam").innerHTML=htmlT||'<div class="hempty">—</div>';
   }
 
   function renderAll(){
@@ -1143,12 +1215,14 @@
     $("doSal").addEventListener("click",function(){
       var mila=num($("sMila").value);
       if(!$("sLocal").value){toast("Elegí un local (o agregá uno en Config)");return;}
+      if(!$("sCarne").value){toast("Elegí el tipo de milanesa");return;}
+      if(!$("sTam").value){toast("Elegí el tamaño");return;}
       if(mila<=0){toast("Poné cuántas milanesas salen");$("sMila").focus();return;}
-      var row={fecha:$("sFecha").value||todayISO(),local_id:$("sLocal").value||null,carne_id:$("sCarne").value||null,mila:mila,nota:$("sNota").value.trim()};
+      var row={fecha:$("sFecha").value||todayISO(),local_id:$("sLocal").value,carne_id:$("sCarne").value,tam_id:$("sTam").value,mila:mila,nota:$("sNota").value.trim()};
       $("doSal").disabled=true;
       withSave(async function(){
         var d=await dbInsert("salidas",row);
-        salidas.unshift({id:d.id,fecha:d.fecha,local:d.local_id,carne:d.carne_id,mila:Number(d.mila),nota:d.nota||"",by:d.creado_por,at:d.created_at});
+        salidas.unshift({id:d.id,fecha:d.fecha,local:d.local_id,carne:d.carne_id,tam:d.tam_id,mila:Number(d.mila),nota:d.nota||"",by:d.creado_por,at:d.created_at});
         refreshStock();
         $("sMila").value=""; $("sNota").value="";
         toast('<span class="k">✓</span> Salida · '+nf(mila)+' u.');
