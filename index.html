@@ -290,6 +290,15 @@
   .addrow.prodrow input[type=number]{flex:1 1 90px;min-width:0;text-align:right;}
   .addrow.prodrow > #newProdRinde{flex:1 1 130px;text-align:left;}
   .hitem .hcost{font-size:12px;color:var(--accent-ink);font-weight:600;margin-top:6px;}
+  .hsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+  .hsum .t{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;box-shadow:var(--shadow);}
+  .hsum .t .v{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:20px;line-height:1;font-variant-numeric:tabular-nums;}
+  .hsum .t .l{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-top:6px;}
+  .hsum .t.rinde .v{color:var(--good);}
+  .desp-hint{margin-top:8px;font-size:12.5px;font-weight:700;display:flex;gap:8px;flex-wrap:wrap;}
+  .desp-hint[hidden]{display:none;}
+  .desp-hint .r{color:var(--good);background:var(--good-bg);padding:3px 9px;border-radius:999px;}
+  .desp-hint .w{color:var(--crit);background:var(--crit-bg);padding:3px 9px;border-radius:999px;}
 
   /* toast */
   .toast{position:absolute;left:50%;bottom:84px;transform:translateX(-50%) translateY(20px);
@@ -371,6 +380,11 @@
             <label for="pMila">Milanesas <span class="u">(u.)</span></label>
             <input type="number" id="pMila" min="0" step="1" inputmode="numeric" placeholder="0">
           </div>
+        </div>
+        <div class="field">
+          <label for="pDesp">Desperdicio <span class="u">(kg, opcional · no cuenta como carne usada)</span></label>
+          <input type="number" id="pDesp" min="0" step="0.1" inputmode="decimal" placeholder="0">
+          <div class="desp-hint" id="despHint" hidden></div>
         </div>
       </div>
 
@@ -456,6 +470,7 @@
       <select id="fPersona"></select>
     </div>
 
+    <div id="histSummary"></div>
     <div id="histList"></div>
   </div>
 
@@ -577,6 +592,14 @@
   function parseNum(v){var n=parseFloat(String(v).replace(",","."));return (isNaN(n)||n<0)?0:n;}
   function fmtQty(n){return String(r2(n)).replace(".",",");}
   function money(n){return "$"+(Number(n)||0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function rindePct(kg,desp){var t=(Number(kg)||0)+(Number(desp)||0);return t>0?((Number(kg)||0)/t*100):0;}
+  function pct1(n){return (Number(n)||0).toFixed(1).replace(".",",")+"%";}
+  function updateDesp(){
+    var h=$("despHint"); if(!h)return;
+    var kg=num($("pKg").value), desp=num($("pDesp").value);
+    if(desp>0 && (kg+desp)>0){ var r=rindePct(kg,desp); h.hidden=false; h.innerHTML='<span class="r">Rinde '+pct1(r)+'</span><span class="w">Desperdicio '+pct1(100-r)+'</span>'; }
+    else { h.hidden=true; }
+  }
   function moneyu(n){return "$"+(Number(n)||0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:4});}
   function perUnit(pack,rinde){return (rinde>0)?(Number(pack)||0)/Number(rinde):0;}
   function modeForUnit(u){return (u==='u')?'cant':(u==='ml')?'vol':'peso';}
@@ -650,7 +673,7 @@
       var meta=(x.rinde_meta&&typeof x.rinde_meta==='object')?x.rinde_meta:null;
       return {id:x.id,name:x.name,unit:x.unit,precio_pack:pack,rinde:rinde,meta:meta,precio:precio,by:x.creado_por,at:x.created_at};
     });
-    producciones=(res[4].data||[]).map(function(x){return {id:x.id,fecha:x.fecha,carne:x.carne_id,tam:x.tam_id,kg:Number(x.kg),mila:Number(x.mila),items:Array.isArray(x.items)?x.items:[],costo:x.costo!=null?Number(x.costo):0,by:x.creado_por,at:x.created_at};});
+    producciones=(res[4].data||[]).map(function(x){return {id:x.id,fecha:x.fecha,carne:x.carne_id,tam:x.tam_id,kg:Number(x.kg),mila:Number(x.mila),items:Array.isArray(x.items)?x.items:[],costo:x.costo!=null?Number(x.costo):0,desperdicio:x.desperdicio!=null?Number(x.desperdicio):0,by:x.creado_por,at:x.created_at};});
     salidas=(res[5].data||[]).map(function(x){return {id:x.id,fecha:x.fecha,local:x.local_id,carne:x.carne_id,tam:x.tam_id,mila:Number(x.mila),nota:x.nota||"",by:x.creado_por,at:x.created_at};});
     PROFILES=(res[6].data||[]).map(function(x){return {id:x.id,nombre:x.nombre||x.email||"—",email:x.email||""};});
     USERS={}; PROFILES.forEach(function(p){USERS[p.id]=p.nombre;});
@@ -719,9 +742,9 @@
       {id:"p5",name:"Ajo",unit:"g",precio_pack:2000,rinde:1000,precio:2,meta:{mode:"peso",cantidad:1,ucompra:"kg"},by:"u-caro",at:d21}
     ];
     producciones=[
-      {id:"pr1",fecha:"2026-08-23",carne:"c1",tam:"t1",kg:10,mila:60,items:[["p1",500],["p2",6],["p3",20]],costo:81150,by:"u-osva",at:"2026-08-23T14:20:00"},
-      {id:"pr2",fecha:"2026-08-23",carne:"c2",tam:"t2",kg:8,mila:40,items:[["p1",450],["p2",5]],costo:40990,by:"u-juan",at:"2026-08-23T11:05:00"},
-      {id:"pr3",fecha:"2026-08-22",carne:"c3",tam:"t1",kg:6,mila:36,items:[["p1",500]],costo:36600,by:"u-caro",at:"2026-08-22T09:40:00"}
+      {id:"pr1",fecha:"2026-08-23",carne:"c1",tam:"t1",kg:10,mila:60,items:[["p1",500],["p2",6],["p3",20]],costo:81150,desperdicio:0.5,by:"u-osva",at:"2026-08-23T14:20:00"},
+      {id:"pr2",fecha:"2026-08-23",carne:"c2",tam:"t2",kg:8,mila:40,items:[["p1",450],["p2",5]],costo:40990,desperdicio:0.3,by:"u-juan",at:"2026-08-23T11:05:00"},
+      {id:"pr3",fecha:"2026-08-22",carne:"c3",tam:"t1",kg:6,mila:36,items:[["p1",500]],costo:36600,desperdicio:0,by:"u-caro",at:"2026-08-22T09:40:00"}
     ];
     salidas=[
       {id:"s1",fecha:"2026-08-23",local:"l1",carne:"c1",tam:"t1",mila:24,nota:"retiró Juan",by:"u-osva",at:"2026-08-23T15:10:00"},
@@ -872,12 +895,26 @@
     fl.hidden=!showLocal;
     if(!showLocal && fl.value){ fl.value=""; fLocal=""; }
   }
+  function renderHistSummary(rows){
+    var sum=$("histSummary"); if(!sum)return;
+    var prods=rows.filter(function(r){return r.t==="prod";}).map(function(r){return r.o;});
+    if(!prods.length){sum.innerHTML="";return;}
+    var mila=0,desp=0,kg=0;
+    prods.forEach(function(o){mila+=Number(o.mila)||0;desp+=Number(o.desperdicio)||0;kg+=Number(o.kg)||0;});
+    var rinde=(kg+desp)>0?(kg/(kg+desp)*100):0;
+    sum.innerHTML='<div class="hsum">'+
+      '<div class="t"><div class="v">'+nf(mila)+'</div><div class="l">Producido (u.)</div></div>'+
+      '<div class="t"><div class="v">'+nf(desp)+' kg</div><div class="l">Desperdicio</div></div>'+
+      '<div class="t rinde"><div class="v">'+(desp>0?pct1(rinde):'—')+'</div><div class="l">Rinde prom.</div></div>'+
+      '</div>';
+  }
   function renderHist(){
     var carne=$("fCarne").value, local=$("fLocal").value, persona=$("fPersona").value, rows=[];
     // Producción no tiene local: si se filtra por local, se muestran solo salidas de ese local
     if((fTipo==="todo"||fTipo==="prod") && !local) producciones.forEach(function(p){if(inRange(p.fecha)&&(!carne||p.carne===carne)&&(!persona||p.by===persona))rows.push({t:"prod",o:p});});
     if(fTipo==="todo"||fTipo==="sal") salidas.forEach(function(s){if(inRange(s.fecha)&&(!carne||s.carne===carne)&&(!local||s.local===local)&&(!persona||s.by===persona))rows.push({t:"sal",o:s});});
     rows.sort(function(a,b){return String(b.o.fecha).localeCompare(String(a.o.fecha))||String(b.o.at||"").localeCompare(String(a.o.at||""));});
+    renderHistSummary(rows);
     var box=$("histList");
     if(!rows.length){box.innerHTML='<div class="hempty"><span class="ic">🗂️</span>No hay movimientos con esos filtros.</div>';return;}
     box.innerHTML=rows.map(function(r){
@@ -890,7 +927,7 @@
           (o.tam?'<span class="szt">'+esc(tamName(o.tam))+'</span>':'')+
           '<span class="hm" style="color:var(--good)">+'+nf(o.mila)+'</span>'+
           '<button class="hdel" data-hdel="'+o.id+'" data-hk="prod" type="button">✕</button></div>'+
-          '<div class="hmeta"><span>'+fmtDate(o.fecha)+'</span><span>'+nf(o.kg)+' kg de carne</span></div>'+
+          '<div class="hmeta"><span>'+fmtDate(o.fecha)+'</span><span>'+nf(o.kg)+' kg de carne'+(o.desperdicio>0?' · desperdicio '+nf(o.desperdicio)+' kg · rinde '+pct1(rindePct(o.kg,o.desperdicio)):'')+'</span></div>'+
           (o.costo>0?'<div class="hcost">Costo '+money(o.costo)+' · '+money(o.mila>0?o.costo/o.mila:0)+' / milanesa</div>':'')+
           (its?'<div class="items">'+its+'</div>':'')+by+'</div>';
       } else {
@@ -1186,7 +1223,8 @@
     });
     $("pCarne").addEventListener("change",function(){loadReceta(this.value);});
     $("pMila").addEventListener("input",computeCost);
-    $("pKg").addEventListener("input",computeCost);
+    $("pKg").addEventListener("input",function(){computeCost();updateDesp();});
+    $("pDesp").addEventListener("input",updateDesp);
     $("addProdBtn").addEventListener("click",function(){$("catalog").classList.toggle("open");});
 
     // register produccion
@@ -1199,15 +1237,17 @@
       var cSel=CARNES.filter(function(x){return x.id===$("pCarne").value;})[0];
       if(cSel&&cSel.precio) costo+=num($("pKg").value)*Number(cSel.precio);
       costo=r2(costo);
+      var desp=num($("pDesp").value);
       var row={fecha:$("pFecha").value||todayISO(),carne_id:$("pCarne").value||null,tam_id:$("pTam").value||null,
-        kg:num($("pKg").value),mila:mila,items:usados.map(function(x){return [x.prodId,x.qty];}),costo:costo};
+        kg:num($("pKg").value),mila:mila,items:usados.map(function(x){return [x.prodId,x.qty];}),costo:costo,desperdicio:desp};
       $("doProd").disabled=true;
       withSave(async function(){
         var d=await dbInsert("producciones",row);
-        producciones.unshift({id:d.id,fecha:d.fecha,carne:d.carne_id,tam:d.tam_id,kg:Number(d.kg),mila:Number(d.mila),items:Array.isArray(d.items)?d.items:[],costo:Number(d.costo)||costo,by:d.creado_por,at:d.created_at});
+        producciones.unshift({id:d.id,fecha:d.fecha,carne:d.carne_id,tam:d.tam_id,kg:Number(d.kg),mila:Number(d.mila),items:Array.isArray(d.items)?d.items:[],costo:Number(d.costo)||costo,desperdicio:d.desperdicio!=null?Number(d.desperdicio):desp,by:d.creado_por,at:d.created_at});
         refreshStock();
-        $("pMila").value=""; $("pKg").value=""; computeCost();
-        toast('<span class="k">✓</span> '+nf(mila)+' u. · '+money(mila>0?costo/mila:0)+'/milanesa');
+        var rp=rindePct(row.kg,desp);
+        $("pMila").value=""; $("pKg").value=""; $("pDesp").value=""; computeCost(); updateDesp();
+        toast('<span class="k">✓</span> '+nf(mila)+' u.'+(desp>0?' · rinde '+pct1(rp):'')+' · '+money(mila>0?costo/mila:0)+'/mila');
       }).then(function(){$("doProd").disabled=false;});
     });
 
